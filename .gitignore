@@ -1,0 +1,8 @@
+node_modules/
+# Only the app's build output, not vendored package dists (which are deps).
+/dist/
+*.local
+_*.md
+/_*/
+docs/superpowers/
+.DS_Store

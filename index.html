@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carve WYSIWYG</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Carve WYSIWYG</h1>
+      <p>A visual editor for the Carve markup language. Edit on the left; the
+        Carve source and HTML preview update live.</p>
+    </header>
+
+    <div class="toolbar">
+      <button data-action="bold" title="Bold (*text*)"><b>B</b></button>
+      <button data-action="italic" title="Italic (/text/)"><i>I</i></button>
+      <button data-action="underline" title="Underline (_text_)"><u>U</u></button>
+      <button data-action="strike" title="Strike (~text~)"><s>S</s></button>
+      <button data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+      <span class="sep"></span>
+      <button data-action="h1" title="Heading 1">H1</button>
+      <button data-action="h2" title="Heading 2">H2</button>
+      <span class="sep"></span>
+      <button data-action="bulletList" title="Bullet list">&bull; List</button>
+      <button data-action="orderedList" title="Ordered list">1. List</button>
+      <button data-action="blockquote" title="Blockquote">&ldquo; Quote</button>
+      <span class="sep"></span>
+      <button data-action="link" title="Link">&#128279; Link</button>
+    </div>
+
+    <main class="panes">
+      <section class="pane">
+        <h2>Editor</h2>
+        <div id="editor" class="editor-surface"></div>
+      </section>
+
+      <section class="pane">
+        <h2>Carve source</h2>
+        <textarea id="carve-source" class="code-pane" readonly></textarea>
+        <h2>Import Carve</h2>
+        <textarea id="carve-import" class="code-pane" placeholder="Paste Carve source here..."></textarea>
+        <button id="load-carve" class="primary">Load Carve &rarr; editor</button>
+      </section>
+
+      <section class="pane">
+        <h2>HTML preview (carve-js)</h2>
+        <div id="html-preview" class="preview-pane"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
