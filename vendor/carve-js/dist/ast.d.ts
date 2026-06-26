@@ -48,6 +48,14 @@ export interface Document extends BaseNode {
      * emits the endnotes section; an unreferenced definition is dropped.
      */
     footnoteDefs?: Record<string, BlockNode[]>;
+    /**
+     * UTF-8 byte length of the source this document was parsed from. Used by the
+     * renderers to size the abbreviation-expansion budget (DoS guard) so a tiny
+     * input with a huge `*[KEY]: EXPANSION` def cannot amplify output without
+     * bound. Absent when the document was constructed directly (not via parse);
+     * renderers then fall back to the base budget.
+     */
+    srcByteLength?: number;
 }
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 export interface Heading extends BaseNode {
@@ -228,6 +236,14 @@ export interface Link extends BaseNode {
      */
     ref?: string;
     rawRef?: string;
+    /**
+     * Set by resolve() when this Link was produced from a `</#id>` cross-reference
+     * (not an ordinary `[text](url)` link or an implicit `[label][]` reference).
+     * Non-rendered metadata - every renderer ignores it; it lets a render-stage
+     * extension (HeadingNumbers, #198) rewrite only auto-filled cross-references
+     * without a fragile title-equality guess.
+     */
+    fromCrossref?: boolean;
 }
 export interface Image extends BaseNode {
     type: 'image';
@@ -293,17 +309,29 @@ export interface Citation {
     key: string;
     /** Inline prefix text before the `@` (e.g. "see "). */
     prefix?: InlineNode[];
-    /** Inline locator after ", " (e.g. "p. 33"). */
+    /** Raw inline locator after ", " (e.g. "p. 33"); what the built-in
+     *  formatter prints. Retained for byte-stable visible output. */
     locator?: InlineNode[];
+    /** Canonical citeproc locator label (e.g. "page"), parsed from `locator`. */
+    locatorLabel?: string;
+    /** Locator value (plain text, e.g. "33-35, 38"), parsed from `locator`. */
+    locatorValue?: string;
+    /** Inline suffix after the locator value (e.g. "and <em>passim</em>"). */
+    suffix?: InlineNode[];
     /** `-@key` suppresses the author in author-date mode. */
     suppressAuthor: boolean;
     /** Assigned during resolve (numbered mode); undefined if key undefined. */
     number?: number;
+    /** Per-key, document-wide use-site index (1-based), assigned when a
+     *  bibliography pool is supplied; drives back-link anchors (#199). */
+    useIndex?: number;
 }
 /** A `[…@key…]` citation, possibly several `;`-separated items (#90, Tier-2). */
 export interface CitationGroup extends BaseNode {
     type: 'citation-group';
     items: Citation[];
+    /** Citation-level mode; set by a leading '+' after '['. Absent = non-integral (parenthetical). CSL/Citum CitationMode vocabulary. */
+    mode?: 'integral';
     /** Verbatim source `[…]` for the undefined-key literal fallback. */
     raw: string;
 }
