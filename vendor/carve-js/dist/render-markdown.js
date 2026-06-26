@@ -1,4 +1,6 @@
+import { AbbrBudget, utf8ByteLength } from './abbr-budget.js';
 const MAX_RENDER_DEPTH = 200;
+const TRIM_NON_NBSP_RE = /^[^\S\u00a0]+|[^\S\u00a0]+$/g;
 export function renderMarkdown(ast, _opts = {}) {
     const headingIds = new Set();
     const referencedHeadingIds = new Set();
@@ -17,7 +19,14 @@ export function renderMarkdown(ast, _opts = {}) {
                 referencedHeadingIds.add(id);
         });
     });
-    const ctx = { headingIds, referencedHeadingIds, listDepth: 0, blockDepth: 0, inlineDepth: 0 };
+    const ctx = {
+        headingIds,
+        referencedHeadingIds,
+        listDepth: 0,
+        blockDepth: 0,
+        inlineDepth: 0,
+        abbrBudget: new AbbrBudget(ast.srcByteLength),
+    };
     const out = renderBlocks(ast.children, ctx);
     const footnotes = renderFootnoteDefs(ast, ctx);
     return normalize(`${out}${footnotes}`);
@@ -36,7 +45,7 @@ function renderBlocks(blocks, ctx) {
 function renderBlock(node, ctx) {
     switch (node.type) {
         case 'heading': {
-            const text = renderInlines(node.children, ctx).replace(/\s*\n\s*/g, ' ').trim();
+            const text = trimNonNbsp(renderInlines(node.children, ctx).replace(/[^\S\u00a0]*\n[^\S\u00a0]*/g, ' '));
             const id = node.attrs?.id;
             const suffix = id && ctx.referencedHeadingIds.has(id) ? ` {#${id}}` : '';
             return `${'#'.repeat(node.level)} ${text}${suffix}\n\n`;
@@ -50,11 +59,11 @@ function renderBlock(node, ctx) {
         case 'code-block': {
             const content = stripControls(node.content);
             const fence = safeFence(content, 3);
-            const lang = markdownFenceInfo(node.lang);
-            return `${fence}${lang}\n${content}\n${fence}\n\n`;
+            const info = markdownFenceInfo(node.lang, node.header);
+            return `${fence}${info}\n${content}\n${fence}\n\n`;
         }
         case 'blockquote': {
-            const lines = renderBlocks(node.children, ctx).trim().split('\n');
+            const lines = trimNonNbsp(renderBlocks(node.children, ctx)).split('\n');
             return `${lines.map((line) => `> ${line}`).join('\n')}\n\n`;
         }
         case 'list':
@@ -65,16 +74,23 @@ function renderBlock(node, ctx) {
             return renderTable(node, ctx);
         case 'admonition': {
             // Markdown has no admonition; preserve the title (otherwise lost) as a
-            // leading bold line, then the body.
+            // leading bold line, then an unconsumed grouping [label] (also bold, the
+            // caption floor; title first when both are present), then the body.
             const body = renderBlocks(node.children, ctx);
             const title = node.title !== undefined ? renderInlines(node.title, ctx) : '';
+            // Escape the label the same way text is escaped (HTML + Markdown
+            // metacharacters), not just strip controls: a label like `[<img …>]`
+            // must not emit live HTML when the Markdown is re-rendered.
+            const labelLine = node.label ? `**${escapeText(node.label)}**\n\n` : '';
             if (title !== '') {
-                return `**${title}**\n\n${body}`;
+                return `**${title}**\n\n${labelLine}${body}`;
             }
-            return body;
+            return `${labelLine}${body}`;
         }
         case 'div':
-            return renderBlocks(node.children, ctx);
+            return node.label
+                ? `**${escapeText(node.label)}**\n\n${renderBlocks(node.children, ctx)}`
+                : renderBlocks(node.children, ctx);
         case 'definition-list':
             return renderDefinitionList(node.items, ctx, true);
         case 'figure':
@@ -110,7 +126,7 @@ function renderList(node, ctx) {
         else {
             prefix = '- ';
         }
-        const content = renderListItem(item, ctx).trim();
+        const content = trimNonNbsp(renderListItem(item, ctx));
         const lines = content.split('\n');
         out += `${indent}${prefix}${lines.shift() ?? ''}\n`;
         const continuation = ' '.repeat(prefix.length);
@@ -129,7 +145,7 @@ function renderDefinitionList(items, ctx, trailingBlank) {
         for (const term of item.terms)
             out += `**${renderInlines(term, ctx)}**\n`;
         for (const def of item.definitions)
-            out += `: ${renderBlocks(def, ctx).trim()}\n`;
+            out += `: ${trimNonNbsp(renderBlocks(def, ctx))}\n`;
     }
     return trailingBlank ? `${out}\n` : out;
 }
@@ -138,7 +154,7 @@ function renderTable(node, ctx) {
     const rows = [];
     let columns = 0;
     for (const row of node.rows) {
-        const cells = row.cells.map((cell) => renderInlines(cell.children, ctx).trim());
+        const cells = row.cells.map((cell) => trimNonNbsp(renderInlines(cell.children, ctx)));
         columns = Math.max(columns, cells.length);
         const rendered = `| ${cells.join(' | ')} |`;
         if (row.cells.every((cell) => cell.header))
@@ -158,11 +174,15 @@ function renderFigure(node, ctx) {
     const target = node.target.type === 'image'
         ? renderImage(node.target)
         : node.target.type === 'table'
-            ? renderTable(node.target, ctx).trim()
-            : renderBlock(node.target, ctx).trim();
+            ? trimNonNbsp(renderTable(node.target, ctx))
+            : trimNonNbsp(renderBlock(node.target, ctx));
     // A block-level target (a code-block listing or a display-math equation)
     // keeps the caption on its own line; an inline image target stays adjacent.
-    const sep = node.target.type === 'code-block' || node.target.type === 'paragraph' ? '\n' : '';
+    const sep = node.target.type === 'blockquote'
+        ? '\n\n'
+        : node.target.type === 'code-block' || node.target.type === 'paragraph'
+            ? '\n'
+            : '';
     return `${target}${sep}${renderInlines(node.caption, ctx)}`;
 }
 function renderFootnoteDefs(ast, ctx) {
@@ -170,7 +190,7 @@ function renderFootnoteDefs(ast, ctx) {
         return '';
     let out = '';
     for (const [label, blocks] of Object.entries(ast.footnoteDefs)) {
-        out += `[^${stripControls(label)}]: ${renderBlocks(blocks, ctx).trim()}\n`;
+        out += `[^${stripControls(label)}]: ${trimNonNbsp(renderBlocks(blocks, ctx))}\n`;
     }
     return out;
 }
@@ -238,8 +258,12 @@ function renderInline(node, ctx) {
             // Markdown has no abbreviation syntax; emit an HTML `<abbr>` so the title
             // survives (markdown allows inline HTML), matching carve-php. Dropping it
             // to plain text would lose the expansion.
-            const title = stripControls(node.expansion).replace(/[&<>"]/g, (c) => c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;');
             const text = stripControls(node.abbr).replace(/[&<>]/g, (c) => c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;');
+            // DoS guard: once cumulative expansion bytes exceed the budget, degrade
+            // to the plain key text only (no <abbr>, no title).
+            if (!ctx.abbrBudget.charge(utf8ByteLength(node.expansion)))
+                return text;
+            const title = stripControls(node.expansion).replace(/[&<>"]/g, (c) => c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;');
             return `<abbr title="${title}">${text}</abbr>`;
         }
         case 'footnote':
@@ -253,7 +277,7 @@ function renderInline(node, ctx) {
         case 'critic-insert':
             return `<ins>${renderInlines(node.children, ctx)}</ins>`;
         case 'critic-delete':
-            return `~~${renderInlines(node.children, ctx)}~~`;
+            return `<del>${renderInlines(node.children, ctx)}</del>`;
         case 'critic-substitute':
             // Emit BOTH sides like the HTML renderer; dropping oldText loses content.
             return `<del>${escapeText(node.oldText)}</del><ins>${escapeText(node.newText)}</ins>`;
@@ -291,13 +315,14 @@ function renderImage(node) {
         ? `![${alt}](${src})`
         : `![${alt}](${src} "${escapeMdTitle(node.title)}")`;
 }
-function markdownFenceInfo(lang) {
-    if (lang === undefined)
-        return '';
+function markdownFenceInfo(lang, header) {
     // Keep only the first whitespace-delimited token (the language word); drop it
     // if it still contains a backtick (would break the fence).
-    const token = stripControls(lang).split(/\s/)[0] ?? '';
-    return token.includes('`') ? '' : token;
+    const rawToken = lang === undefined ? '' : (stripControls(lang).split(/\s/)[0] ?? '');
+    const token = rawToken.includes('`') ? '' : rawToken;
+    if (header === undefined)
+        return token;
+    return `${token} "${escapeMdTitle(header)}"`;
 }
 function escapeMarkdownLabel(text) {
     return stripControls(text).replace(/[\\[\]]/g, '\\$&');
@@ -398,7 +423,10 @@ function normalize(text) {
     // re-render as `&nbsp;` and is never mistaken for an indented code-block
     // prefix the way ordinary leading spaces would be. Done after trimming so
     // placeholder-derived leading indentation survives.
-    return `${text.replace(/\n{3,}/g, '\n\n').trim()}\n`.replace(/\ue000/g, '\u00a0');
+    return `${trimNonNbsp(text.replace(/\n{3,}/g, '\n\n'))}\n`.replace(/\ue000/g, '\u00a0');
+}
+function trimNonNbsp(text) {
+    return text.replace(TRIM_NON_NBSP_RE, '');
 }
 function walkBlocks(blocks, visit) {
     for (const block of blocks) {
