@@ -1,5 +1,5 @@
 {
-  "name": "carve-wysiwyg",
+  "name": "@markup-carve/carve-wysiwyg",
   "version": "0.1.0",
   "private": true,
   "type": "module",
