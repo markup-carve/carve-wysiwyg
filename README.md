@@ -47,7 +47,7 @@ deps for reproducible installs:
 
 To depend by git URL instead, swap the two `file:` entries in `package.json`
 for `"@markup-carve/carve": "github:markup-carve/carve-js"` and
-`"carve-grammars": "github:markup-carve/carve-grammars"`. Note carve-js's git
+`"@markup-carve/carve-grammars": "github:markup-carve/carve-grammars"`. Note carve-js's git
 install runs a `prepare` (tsc) build, and carve-grammars' `CarveKit` imports
 several Tiptap extensions beyond its declared peerDependencies (code-block,
 highlight, sub/superscript, image, link, table family, task family) - those are

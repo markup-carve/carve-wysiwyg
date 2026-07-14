@@ -8,7 +8,7 @@
  * change.
  */
 import { Editor } from '@tiptap/core';
-import { CarveKit, serializeToCarve } from 'carve-grammars/tiptap';
+import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 
 export interface CarveEditorOptions {
   element: HTMLElement;

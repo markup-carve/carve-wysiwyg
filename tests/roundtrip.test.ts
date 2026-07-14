@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
-import { CarveKit, serializeToCarve } from 'carve-grammars/tiptap';
+import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorHtml } from '../src/carve-import';
 
 let editor: Editor;
