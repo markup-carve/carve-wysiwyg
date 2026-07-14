@@ -1,8 +1,8 @@
 /**
- * Minimal ambient types for the `carve-grammars/tiptap` package, which ships
+ * Minimal ambient types for the `@markup-carve/carve-grammars/tiptap` package, which ships
  * as plain ESM with no bundled .d.ts. We only declare what the app uses.
  */
-declare module 'carve-grammars/tiptap' {
+declare module '@markup-carve/carve-grammars/tiptap' {
   import type { Extension } from '@tiptap/core';
 
   /** The Tiptap extension bundle for Carve markup. */

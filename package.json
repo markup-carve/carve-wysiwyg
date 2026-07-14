@@ -29,7 +29,7 @@
     "@tiptap/extension-underline": "^2.11.5",
     "@tiptap/pm": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "carve-grammars": "file:./vendor/carve-grammars",
+    "@markup-carve/carve-grammars": "file:./vendor/carve-grammars",
     "highlight.js": "^11.11.1",
     "prismjs": "^1.29.0"
   },
