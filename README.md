@@ -28,7 +28,7 @@ Three live panes:
 ## Develop / build / test
 
 ```bash
-npm install      # uses vendored deps (see "Dependencies")
+npm install      # carve-grammars is still vendored (see "Dependencies")
 npm run dev      # vite dev server
 npm run build    # tsc --noEmit + vite build -> dist/
 npm test         # vitest round-trip suite (happy-dom)
@@ -37,21 +37,25 @@ npm run typecheck
 
 ## Dependencies
 
-The two org packages are vendored under `vendor/` and referenced with `file:`
-deps for reproducible installs:
+`@markup-carve/carve` comes from npm as an ordinary dependency. It was vendored
+while the engine was unpublished; `@markup-carve/carve@0.1.2` has been on npm
+since, so there is nothing left for the vendored copy to do.
 
-- `vendor/carve-js` - the prebuilt `dist/` of carve-js (its `prepare` build
-  script is stripped from the vendored copy so a `file:` install needs no
-  TypeScript toolchain).
-- `vendor/carve-grammars` - the plain-ESM Tiptap kit + serializer.
+`@markup-carve/carve-grammars` is still vendored under `vendor/`, for two
+reasons that both have to go away before it can follow:
 
-To depend by git URL instead, swap the two `file:` entries in `package.json`
-for `"@markup-carve/carve": "github:markup-carve/carve-js"` and
-`"@markup-carve/carve-grammars": "github:markup-carve/carve-grammars"`. Note carve-js's git
-install runs a `prepare` (tsc) build, and carve-grammars' `CarveKit` imports
-several Tiptap extensions beyond its declared peerDependencies (code-block,
-highlight, sub/superscript, image, link, table family, task family) - those are
-all listed as direct dependencies here so the kit resolves.
+- the published package is **0.1.2** and the vendored copy is **0.3.0**. The
+  published one predates the Tiptap footnote work, and swapping it in fails the
+  footnote round-trip test outright - `[^1]` comes back as `{^\[\^1]^}` and the
+  definition as an ordinary list item. carve-grammars' own v0.1.3 and v0.1.4
+  releases are unpublished drafts;
+- two parse-priority patches are applied on top of it, described under *Vendor
+  patches* below and marked in the source. Those belong upstream.
+
+carve-grammars' `CarveKit` imports several Tiptap extensions beyond its declared
+peerDependencies (code-block, highlight, sub/superscript, image, link, table
+family, task family) - those are all listed as direct dependencies here so the
+kit resolves.
 
 ### Vendor patches
 
