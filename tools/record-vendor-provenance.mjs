@@ -40,6 +40,17 @@ if (!commit) {
   exit(1)
 }
 
+// Without this the rev-parse below silently yields null for every file, every
+// row is emitted as `local`, and the regenerated manifest stops proving that
+// anything is upstream-identical while still matching local hashes. A generator
+// that degrades to "everything is a local patch" is worse than no generator.
+try {
+  execFileSync('git', ['-C', upstream, 'cat-file', '-e', `${commit}^{commit}`], { stdio: 'ignore' })
+} catch {
+  stdout.write(`${upstream} does not contain ${commit}; point this at a carve-grammars checkout that does\n`)
+  exit(1)
+}
+
 function walk(dir) {
   const out = []
   for (const entry of readdirSync(dir)) {
@@ -61,6 +72,9 @@ const rows = walk(vendorDir)
   .sort()
   .map((path) => {
     const local = hash(join(vendorDir, path))
+    // A missing path is a real answer here - the file exists only in the
+    // vendored copy - so this catch is narrow by construction: the commit
+    // itself was verified above.
     let upstreamHash = null
     try {
       upstreamHash = execFileSync('git', ['-C', upstream, 'rev-parse', `${commit}:${path}`], {

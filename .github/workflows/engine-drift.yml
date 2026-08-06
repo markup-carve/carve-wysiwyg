@@ -153,7 +153,15 @@ jobs:
           rc=0
           listed=0
           while read -r state sha path; do
-            case "${state}" in ''|'#'*) continue ;; esac
+            case "${state}" in
+              ''|'#'*) continue ;;
+              verbatim|local) ;;
+              # A typo such as `verbtaim` would otherwise be counted, have its
+              # local hash checked, and skip the upstream comparison in silence -
+              # a file recorded as upstream-identical would stop being compared
+              # with upstream and CI would stay green.
+              *) echo "::error::${record} line for ${path} has state \"${state}\"; only verbatim and local are meaningful"; rc=1; continue ;;
+            esac
             listed=$(( listed + 1 ))
             file="vendor/carve-grammars/${path}"
             if [ ! -f "${file}" ]; then
