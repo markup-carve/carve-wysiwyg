@@ -190,10 +190,27 @@ jobs:
           # Every vendored file has to appear in the manifest, or a file could
           # be added to the copy and never be compared with anything - the same
           # hole as having no record at all, only harder to notice.
-          present="$(find vendor/carve-grammars -type f ! -name PROVENANCE | wc -l | tr -d ' ')"
-          echo "${listed} file(s) recorded, ${present} file(s) vendored"
-          if [ "${listed}" != "${present}" ]; then
-            echo "::error::${record} lists ${listed} files but the vendored copy has ${present} - re-run tools/record-vendor-provenance.mjs and commit the result"
+          #
+          # Compared as SETS rather than counts. A duplicated row alongside an
+          # omitted file balances the two counts exactly, and the omitted file
+          # is then never compared with anything - which is the hole this is
+          # here to close, reopened by the check meant to close it.
+          sed -n '/^# <state>/,$p' "${record}" \
+            | awk '$1 == "verbatim" || $1 == "local" { print $3 }' \
+            | sort > /tmp/recorded-paths.txt
+          find vendor/carve-grammars -type f ! -name PROVENANCE \
+            | sed 's|^vendor/carve-grammars/||' \
+            | sort > /tmp/vendored-paths.txt
+          echo "${listed} manifest row(s) accepted, $(wc -l < /tmp/vendored-paths.txt | tr -d ' ') file(s) vendored"
+
+          duplicates="$(sort /tmp/recorded-paths.txt | uniq -d)"
+          if [ -n "${duplicates}" ]; then
+            echo "::error::${record} lists these paths more than once: ${duplicates}"
+            rc=1
+          fi
+          unrecorded="$(comm -13 <(sort -u /tmp/recorded-paths.txt) /tmp/vendored-paths.txt)"
+          if [ -n "${unrecorded}" ]; then
+            echo "::error::vendored but absent from ${record}: ${unrecorded} - re-run tools/record-vendor-provenance.mjs and commit the result"
             rc=1
           fi
           exit "${rc}"
