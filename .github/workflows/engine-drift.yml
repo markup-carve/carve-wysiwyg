@@ -20,6 +20,20 @@ name: Engine drift
 #      it, because nothing about the range is wrong - the PUBLISHED engine had
 #      stopped tracking the source.
 #
+# THE SECOND DEPENDENCY is not a range at all. `vendor/carve-grammars` is a
+# COPY of markup-carve/carve-grammars, resolved as `file:./vendor/carve-grammars`,
+# and it had no provenance of any kind - the only thing describing it was a
+# `"version": "0.3.0"` naming a release no registry has ever carried. A pin
+# comparison could not even be attempted, which is worse than a stale pin: the
+# vendored engine bundle in intellij-carve reached 140 of 690 documents wrong
+# behind a recorded revision that merely LOOKED plausible (carve#735).
+#
+# So the copy now carries `vendor/carve-grammars/PROVENANCE`, and the second job
+# below is the thing that reads it. A recorded provenance nothing reads is a
+# comment, not traceability - the failure mode that let intellij-carve's build
+# script write a header for a year while its value silently degraded to the
+# literal `unknown`.
+#
 # It WARNS on both rather than failing. Upstream moving is not a defect in
 # this repo, and a job that goes red for something outside it teaches people
 # to ignore the job. It DOES fail when the range resolves to nothing, which
@@ -93,3 +107,85 @@ jobs:
           if [ "${behind}" -gt 0 ]; then
             echo "::warning::the PUBLISHED engine ${latest} is ${behind} commit(s) behind carve-js main - every repo installing from the registry is that far behind the language, however current its range is"
           fi
+
+  vendored-grammars:
+    name: The vendored grammars are what PROVENANCE says they are
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the grammars
+        uses: actions/checkout@v4
+        with:
+          repository: markup-carve/carve-grammars
+          path: carve-grammars
+          fetch-depth: 0
+
+      - name: Read vendor/carve-grammars/PROVENANCE back
+        run: |
+          set -euo pipefail
+          record='vendor/carve-grammars/PROVENANCE'
+          if [ ! -f "${record}" ]; then
+            echo "::error::${record} is missing, so nothing describes which carve-grammars the vendored copy came from"
+            exit 1
+          fi
+
+          commit="$(sed -n 's/^commit[[:space:]]\+\([0-9a-f]\{40\}\)$/\1/p' "${record}" | head -1)"
+          if [ -z "${commit}" ]; then
+            echo "::error::${record} records no 40-hex commit - the header is missing or was hand-edited"
+            exit 1
+          fi
+          if ! git -C carve-grammars cat-file -e "${commit}^{commit}" 2>/dev/null; then
+            echo "::error::${record} records ${commit}, which is not a commit in markup-carve/carve-grammars"
+            exit 1
+          fi
+          if ! git -C carve-grammars merge-base --is-ancestor "${commit}" origin/main; then
+            echo "::error::${commit} is not on carve-grammars main, so the vendored copy came from an unmerged or rewritten branch"
+            exit 1
+          fi
+          behind="$(git -C carve-grammars rev-list --count "${commit}..origin/main")"
+          echo "vendored from carve-grammars ${commit} ($(git -C carve-grammars log -1 --format='%ci %s' "${commit}"))"
+          echo "carve-grammars main is ${behind} commit(s) ahead"
+          if [ "${behind}" -gt 0 ]; then
+            echo "::warning::the vendored grammars are ${behind} commit(s) behind carve-grammars main - the editor's schema and Carve serializer are that far behind"
+          fi
+
+          rc=0
+          listed=0
+          while read -r state sha path; do
+            case "${state}" in ''|'#'*) continue ;; esac
+            listed=$(( listed + 1 ))
+            file="vendor/carve-grammars/${path}"
+            if [ ! -f "${file}" ]; then
+              echo "::error::${record} lists ${path}, which is not in the vendored copy"
+              rc=1
+              continue
+            fi
+            actual="$(git hash-object "${file}")"
+            if [ "${actual}" != "${sha}" ]; then
+              # A `local` line is a deliberate vendor patch, not a licence to
+              # edit unrecorded: the recorded hash is what makes "local" mean
+              # something a reviewer can check.
+              echo "::error::${path} is ${actual}, but ${record} records ${sha} - re-run tools/record-vendor-provenance.mjs and commit the result"
+              rc=1
+              continue
+            fi
+            if [ "${state}" = "verbatim" ]; then
+              upstream="$(git -C carve-grammars rev-parse "${commit}:${path}" 2>/dev/null || true)"
+              if [ "${upstream}" != "${sha}" ]; then
+                echo "::error::${path} is recorded verbatim, but carve-grammars ${commit} has ${upstream:-no such file} rather than ${sha}"
+                rc=1
+              fi
+            fi
+          done < <(sed -n '/^# <state>/,$p' "${record}")
+
+          # Every vendored file has to appear in the manifest, or a file could
+          # be added to the copy and never be compared with anything - the same
+          # hole as having no record at all, only harder to notice.
+          present="$(find vendor/carve-grammars -type f ! -name PROVENANCE | wc -l | tr -d ' ')"
+          echo "${listed} file(s) recorded, ${present} file(s) vendored"
+          if [ "${listed}" != "${present}" ]; then
+            echo "::error::${record} lists ${listed} files but the vendored copy has ${present} - re-run tools/record-vendor-provenance.mjs and commit the result"
+            rc=1
+          fi
+          exit "${rc}"
