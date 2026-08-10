@@ -9,6 +9,12 @@
  */
 import './style.css';
 import { Editor } from '@tiptap/core';
+// CarveKit registers these extensions at runtime from a plain-JS package.
+// Import their declaration augmentations so chained toolbar commands remain
+// visible to TypeScript as well.
+import type {} from '@tiptap/starter-kit';
+import type {} from '@tiptap/extension-link';
+import type {} from '@tiptap/extension-underline';
 import { createCarveEditor, editorToCarve } from './editor';
 import { carveToEditorHtml, carveToHtmlRaw } from './carve-import';
 

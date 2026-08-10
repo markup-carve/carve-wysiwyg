@@ -28,7 +28,7 @@ Three live panes:
 ## Develop / build / test
 
 ```bash
-npm install      # carve-grammars is still vendored (see "Dependencies")
+npm install      # installs the published Carve engine and grammar packages
 npm run dev      # vite dev server
 npm run build    # tsc --noEmit + vite build -> dist/
 npm test         # vitest round-trip suite (happy-dom)
@@ -37,36 +37,19 @@ npm run typecheck
 
 ## Dependencies
 
-`@markup-carve/carve` comes from npm as an ordinary dependency. It was vendored
-while the engine was unpublished; `@markup-carve/carve@0.1.2` has been on npm
-since, so there is nothing left for the vendored copy to do.
+`@markup-carve/carve` and `@markup-carve/carve-grammars` are ordinary npm
+dependencies. The grammar is pinned exactly to 0.1.3 because Carve remains
+pre-1.0 and patch releases may carry editor-visible behavior changes.
 
-`@markup-carve/carve-grammars` is still vendored under `vendor/`, for two
-reasons that both have to go away before it can follow:
-
-- the published package is **0.1.2** and the vendored copy is **0.3.0**. The
-  published one predates the Tiptap footnote work, and swapping it in fails the
-  footnote round-trip test outright - `[^1]` comes back as `{^\[\^1]^}` and the
-  definition as an ordinary list item. carve-grammars' own v0.1.3 and v0.1.4
-  releases are unpublished drafts;
-- two parse-priority patches are applied on top of it, described under *Vendor
-  patches* below and marked in the source. Those belong upstream.
+The old vendored grammar was removed after 0.1.3 published. Its two local
+footnote parse-priority patches landed upstream in carve-grammars #199, so the
+published package now provides both the missing functionality and the fixes
+that previously required a downstream fork.
 
 carve-grammars' `CarveKit` imports several Tiptap extensions beyond its declared
 peerDependencies (code-block, highlight, sub/superscript, image, link, table
 family, task family) - those are all listed as direct dependencies here so the
 kit resolves.
-
-### Vendor patches
-
-Two parse-priority tweaks were applied to the vendored `carve-grammars` so the
-footnote round trip is lossless; both are marked with a
-`[carve-wysiwyg vendor patch]` comment:
-
-- `carve-footnote.js`: bump `sup.carve-footnote` / `span.carve-footnote-ref`
-  parse priority above the Superscript mark (which also claims bare `<sup>`).
-- `carve-footnote-definition.js`: bump `li[data-footnote-label]` parse priority
-  above the default list item.
 
 ## Round trip: what is clean vs lossy
 

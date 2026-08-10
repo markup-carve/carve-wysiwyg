@@ -1,232 +1,45 @@
 name: Engine drift
 
-# This repo does not implement Carve - it calls an engine that is already
-# corpus-gated in its own repository. So what can rot here is not conformance,
-# it is the DEPENDENCY: nobody notices when the engine stops moving, and CI
-# stays green because hand-written expectations are satisfied by a stale
-# parser exactly as well as by a current one (carve#735).
-#
-# TWO DISTANCES, because they fail differently and only one is visible from
-# package.json:
-#
-#   1. what the range resolves to, against the registry's LATEST. A `^0.1.2`
-#      range will not pick up a `0.2.0`, so the release that matters most -
-#      the one carrying breaking changes - is exactly the one a range-relative
-#      check sleeps through.
-#
-#   2. the registry's latest, against carve-js `main`. This is the one that
-#      actually failed: a June engine sat in six repos while every range was
-#      satisfied and every check was green (carve#499). No range check can see
-#      it, because nothing about the range is wrong - the PUBLISHED engine had
-#      stopped tracking the source.
-#
-# THE SECOND DEPENDENCY is not a range at all. `vendor/carve-grammars` is a
-# COPY of markup-carve/carve-grammars, resolved as `file:./vendor/carve-grammars`,
-# and it had no provenance of any kind - the only thing describing it was a
-# `"version": "0.3.0"` naming a release no registry has ever carried. A pin
-# comparison could not even be attempted, which is worse than a stale pin: the
-# vendored engine bundle in intellij-carve reached 140 of 690 documents wrong
-# behind a recorded revision that merely LOOKED plausible (carve#735).
-#
-# So the copy now carries `vendor/carve-grammars/PROVENANCE`, and the second job
-# below is the thing that reads it. A recorded provenance nothing reads is a
-# comment, not traceability - the failure mode that let intellij-carve's build
-# script write a header for a year while its value silently degraded to the
-# literal `unknown`.
-#
-# It WARNS on both rather than failing. Upstream moving is not a defect in
-# this repo, and a job that goes red for something outside it teaches people
-# to ignore the job. It DOES fail when the range resolves to nothing, which
-# means the dependency is unreachable and an install here is broken.
-
 on:
   schedule:
-    # 05:00 UTC daily, alongside the other drift runs in the org.
     - cron: "0 5 * * *"
   workflow_dispatch:
 
 jobs:
-  engine-drift:
+  registry-drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
 
-      - name: Compare the range against the registry
-        id: registry
+      - name: Compare declared Carve packages with the registry
         run: |
           set -euo pipefail
-          pkg='@markup-carve/carve'
-          range="$(node -p "const p=require('./package.json');const d=p.dependencies||{},v=p.devDependencies||{};d['${pkg}']||v['${pkg}']||''")"
-          if [ -z "${range}" ]; then
-            echo "::error::${pkg} is not a dependency of this repo - this workflow is watching nothing"
-            exit 1
-          fi
-          # `npm view <pkg>@<range> version` prints ONE bare version when the
-          # range matches a single release, and `<pkg>@<v> '<v>'` lines when it
-          # matches several. Taking the last WHITESPACE-SEPARATED FIELD reads
-          # both; `tail -1` alone concatenates the spec onto the version the
-          # moment a second matching release exists, yielding
-          # `@markup-carve/carve@0.1.20.1.2` rather than a version.
-          resolved="$(npm view "${pkg}@${range}" version 2>/dev/null | tail -1 | tr -d "'\"" | awk '{print $NF}')"
-          latest="$(npm view "${pkg}" version 2>/dev/null | tr -d "'\"" | awk '{print $NF}')"
-          if [ -z "${resolved}" ]; then
-            echo "::error::${pkg}@${range} resolves to nothing on the registry - an install here is broken"
-            exit 1
-          fi
-          # Both reads are checked for the SHAPE of a version before anything is
-          # compared. Without this the workflow's failure mode is silence: a
-          # mis-read compares unequal to everything, so the drift warning fires
-          # with a nonsense string in it and reads as a result (carve#755).
-          for pair in "resolved=${resolved}" "latest=${latest}"; do
-            case "${pair#*=}" in
-              [0-9]*.[0-9]*.[0-9]*) ;;
-              *) echo "::error::${pair%%=*} read back as \"${pair#*=}\" from the registry, which is not a version - every comparison below it would be meaningless"; exit 1 ;;
-            esac
-          done
-          echo "range           ${range}"
-          echo "resolves to     ${resolved}"
-          echo "registry latest ${latest}"
-          if [ "${resolved}" != "${latest}" ]; then
-            echo "::warning::${pkg} ${latest} is published, but the range ${range} takes ${resolved} - a major-bumped release does not arrive on its own"
-          fi
-          echo "latest=${latest}" >> "${GITHUB_OUTPUT}"
 
-      - name: Check out the engine
-        uses: actions/checkout@v4
-        with:
-          repository: markup-carve/carve-js
-          path: carve-js
-          fetch-depth: 0
+          check() {
+            local pkg="$1" declared locked latest
+            declared="$(node -p "require('./package.json').dependencies['${pkg}'] || ''")"
+            locked="$(node -p "require('./package-lock.json').packages['node_modules/${pkg}']?.version || ''")"
+            latest="$(npm view "${pkg}" version 2>/dev/null | tr -d "'\"")"
 
-      - name: Compare the published engine against carve-js main
-        run: |
-          set -euo pipefail
-          latest='${{ steps.registry.outputs.latest }}'
-          tag=""
-          for candidate in "${latest}" "v${latest}"; do
-            if git -C carve-js rev-parse "${candidate}" >/dev/null 2>&1; then
-              tag="${candidate}"
-              break
+            if [ -z "${declared}" ] || [ -z "${locked}" ] || [ -z "${latest}" ]; then
+              echo "::error::${pkg}: declared=${declared:-missing}, locked=${locked:-missing}, latest=${latest:-missing}"
+              exit 1
             fi
-          done
-          if [ -z "${tag}" ]; then
-            echo "::warning::carve-js has no tag for the published ${latest}, so the published engine cannot be located in the source"
-            exit 0
-          fi
-          behind="$(git -C carve-js rev-list --count "${tag}..origin/main")"
-          echo "published ${latest} is carve-js ${tag} ($(git -C carve-js log -1 --format=%s "${tag}"))"
-          echo "carve-js main is ${behind} commit(s) ahead of it"
-          if [ "${behind}" -gt 0 ]; then
-            echo "::warning::the PUBLISHED engine ${latest} is ${behind} commit(s) behind carve-js main - every repo installing from the registry is that far behind the language, however current its range is"
-          fi
-
-  vendored-grammars:
-    name: The vendored grammars are what PROVENANCE says they are
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check out the grammars
-        uses: actions/checkout@v4
-        with:
-          repository: markup-carve/carve-grammars
-          path: carve-grammars
-          fetch-depth: 0
-
-      - name: Read vendor/carve-grammars/PROVENANCE back
-        run: |
-          set -euo pipefail
-          record='vendor/carve-grammars/PROVENANCE'
-          if [ ! -f "${record}" ]; then
-            echo "::error::${record} is missing, so nothing describes which carve-grammars the vendored copy came from"
-            exit 1
-          fi
-
-          commit="$(sed -n 's/^commit[[:space:]]\+\([0-9a-f]\{40\}\)$/\1/p' "${record}" | head -1)"
-          if [ -z "${commit}" ]; then
-            echo "::error::${record} records no 40-hex commit - the header is missing or was hand-edited"
-            exit 1
-          fi
-          if ! git -C carve-grammars cat-file -e "${commit}^{commit}" 2>/dev/null; then
-            echo "::error::${record} records ${commit}, which is not a commit in markup-carve/carve-grammars"
-            exit 1
-          fi
-          if ! git -C carve-grammars merge-base --is-ancestor "${commit}" origin/main; then
-            echo "::error::${commit} is not on carve-grammars main, so the vendored copy came from an unmerged or rewritten branch"
-            exit 1
-          fi
-          behind="$(git -C carve-grammars rev-list --count "${commit}..origin/main")"
-          echo "vendored from carve-grammars ${commit} ($(git -C carve-grammars log -1 --format='%ci %s' "${commit}"))"
-          echo "carve-grammars main is ${behind} commit(s) ahead"
-          if [ "${behind}" -gt 0 ]; then
-            echo "::warning::the vendored grammars are ${behind} commit(s) behind carve-grammars main - the editor's schema and Carve serializer are that far behind"
-          fi
-
-          rc=0
-          listed=0
-          while read -r state sha path; do
-            case "${state}" in
-              ''|'#'*) continue ;;
-              verbatim|local) ;;
-              # A typo such as `verbtaim` would otherwise be counted, have its
-              # local hash checked, and skip the upstream comparison in silence -
-              # a file recorded as upstream-identical would stop being compared
-              # with upstream and CI would stay green.
-              *) echo "::error::${record} line for ${path} has state \"${state}\"; only verbatim and local are meaningful"; rc=1; continue ;;
-            esac
-            listed=$(( listed + 1 ))
-            file="vendor/carve-grammars/${path}"
-            if [ ! -f "${file}" ]; then
-              echo "::error::${record} lists ${path}, which is not in the vendored copy"
-              rc=1
-              continue
+            if [ "${declared}" != "${locked}" ]; then
+              echo "::error::${pkg}: package.json declares ${declared}, lockfile installs ${locked}"
+              exit 1
             fi
-            actual="$(git hash-object "${file}")"
-            if [ "${actual}" != "${sha}" ]; then
-              # A `local` line is a deliberate vendor patch, not a licence to
-              # edit unrecorded: the recorded hash is what makes "local" mean
-              # something a reviewer can check.
-              echo "::error::${path} is ${actual}, but ${record} records ${sha} - re-run tools/record-vendor-provenance.mjs and commit the result"
-              rc=1
-              continue
-            fi
-            if [ "${state}" = "verbatim" ]; then
-              upstream="$(git -C carve-grammars rev-parse "${commit}:${path}" 2>/dev/null || true)"
-              if [ "${upstream}" != "${sha}" ]; then
-                echo "::error::${path} is recorded verbatim, but carve-grammars ${commit} has ${upstream:-no such file} rather than ${sha}"
-                rc=1
-              fi
-            fi
-          done < <(sed -n '/^# <state>/,$p' "${record}")
 
-          # Every vendored file has to appear in the manifest, or a file could
-          # be added to the copy and never be compared with anything - the same
-          # hole as having no record at all, only harder to notice.
-          #
-          # Compared as SETS rather than counts. A duplicated row alongside an
-          # omitted file balances the two counts exactly, and the omitted file
-          # is then never compared with anything - which is the hole this is
-          # here to close, reopened by the check meant to close it.
-          sed -n '/^# <state>/,$p' "${record}" \
-            | awk '$1 == "verbatim" || $1 == "local" { print $3 }' \
-            | sort > /tmp/recorded-paths.txt
-          find vendor/carve-grammars -type f ! -name PROVENANCE \
-            | sed 's|^vendor/carve-grammars/||' \
-            | sort > /tmp/vendored-paths.txt
-          echo "${listed} manifest row(s) accepted, $(wc -l < /tmp/vendored-paths.txt | tr -d ' ') file(s) vendored"
+            echo "${pkg}: declared and locked at ${declared}; registry latest is ${latest}"
+            if [ "${locked}" != "${latest}" ]; then
+              echo "::warning::${pkg} ${latest} is published, but this editor is pinned to ${locked}"
+            fi
+          }
 
-          duplicates="$(sort /tmp/recorded-paths.txt | uniq -d)"
-          if [ -n "${duplicates}" ]; then
-            echo "::error::${record} lists these paths more than once: ${duplicates}"
-            rc=1
-          fi
-          unrecorded="$(comm -13 <(sort -u /tmp/recorded-paths.txt) /tmp/vendored-paths.txt)"
-          if [ -n "${unrecorded}" ]; then
-            echo "::error::vendored but absent from ${record}: ${unrecorded} - re-run tools/record-vendor-provenance.mjs and commit the result"
-            rc=1
-          fi
-          exit "${rc}"
+          check '@markup-carve/carve'
+          check '@markup-carve/carve-grammars'
