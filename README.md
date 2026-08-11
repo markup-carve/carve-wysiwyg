@@ -5,12 +5,12 @@ markup language. This fills awesome-djot's "Sandboxes > WYSIWYG" gap for Carve.
 
 It is built from the markup-carve org's own assets:
 
-- **carve-grammars** ships the Tiptap kit (`CarveKit`) and the ProseMirror ->
-  Carve serializer (`serializeToCarve`). The visual editing surface and the
-  live Carve source pane are driven entirely by these.
+- **carve-grammars** ships the Tiptap kit (`CarveKit`), the AST-based loader
+  (`carveToProseMirror`) and the ProseMirror -> Carve serializer
+  (`serializeToCarve`). The visual editing surface and both conversion
+  directions are driven by this public package.
 - **carve-js** (`@markup-carve/carve`) is the reference parser/renderer. It
-  powers the import direction (Carve source -> HTML -> editor) and the HTML
-  preview pane.
+  powers the parser behind the shared loader and the HTML preview pane.
 
 ## Layout
 
@@ -53,9 +53,11 @@ kit resolves.
 
 ## Round trip: what is clean vs lossy
 
-The round trip is Carve -> carve-js HTML -> (normalize) -> ProseMirror doc ->
-`serializeToCarve` -> Carve. carve-js and the carve-php-tuned `CarveKit` agree
-on most HTML shapes; `src/carve-import.ts` rewrites the few that differ.
+The round trip is Carve -> carve-js AST -> ProseMirror doc ->
+`serializeToCarve` -> Carve. It no longer renders and reparses HTML on import.
+The loader runs with `unsupported: 'preserve'`, so source that has no rich
+Tiptap representation is retained in source-preserving nodes rather than
+silently discarded.
 
 **Round-trips cleanly** (asserted in `tests/roundtrip.test.ts`):
 
@@ -64,21 +66,12 @@ on most HTML shapes; `src/carve-import.ts` rewrites the few that differ.
 - Bullet and ordered lists
 - Links and inline code
 - Blockquotes
-- Admonition divs (`:::warning`): carve-js emits
-  `<aside class="admonition warning">`, normalized to `div.carve-div.warning`.
-- Footnotes (reference + definition).
+- Admonition divs (`:::warning`) and their container class.
+- Footnotes (reference + definition), including their authored labels.
+- Unsupported constructs such as frontmatter through source preservation.
 
 **Lossy / normalized (documented, not hidden):**
 
-- **Footnote labels are renumbered.** carve-js auto-numbers footnote markers in
-  its HTML output (a named `[^foo]` is rendered as `<sup>1</sup>`), and the
-  human label is not recoverable from that HTML. The round trip therefore
-  preserves the *reference-to-definition pairing* but emits numeric labels
-  (`[^1]`) rather than the original name. This is a limitation of importing via
-  rendered HTML, not of the serializer.
-- **Admonition class set normalizes to a single token.** A `:::warning` keeps
-  its `warning` class; multi-class containers collapse to the space-joined
-  class string.
 - **CriticMarkup containing its own closing delimiter** (`+}` / `-}` inside
   `{+...+}` / `{-...-}`) cannot round-trip - Carve provides no escape for it.
   This is an upstream serializer limitation noted in carve-grammars.
