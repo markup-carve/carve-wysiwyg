@@ -16,7 +16,7 @@ import type {} from '@tiptap/starter-kit';
 import type {} from '@tiptap/extension-link';
 import type {} from '@tiptap/extension-underline';
 import { createCarveEditor, editorToCarve } from './editor';
-import { carveToEditorHtml, carveToHtmlRaw } from './carve-import';
+import { carveToEditorDocument, carveToHtmlRaw } from './carve-import';
 
 const SAMPLE = `# Carve WYSIWYG
 
@@ -62,9 +62,9 @@ function refreshOutputs(carve: string): void {
 
 /** Load Carve source into the editor (import direction). */
 function loadCarve(source: string): void {
-  const html = carveToEditorHtml(source, document);
+  const editorDocument = carveToEditorDocument(source);
   // emitUpdate defaults to false; we refresh the outputs explicitly below.
-  editor.commands.setContent(html);
+  editor.commands.setContent(editorDocument);
   refreshOutputs(editorToCarve(editor));
 }
 

@@ -1,18 +1,17 @@
 /**
- * Round-trip test: Carve source -> carve-js HTML -> (normalize) -> Tiptap
- * ProseMirror doc -> serializeToCarve -> Carve source.
+ * Round-trip test: Carve source -> Carve AST -> ProseMirror doc ->
+ * serializeToCarve -> Carve source.
  *
- * This drives the *exact same path the app uses*: carveToEditorHtml() then
- * editor.commands.setContent() then serializeToCarve(editor.getJSON()).
+ * This drives the exact same path the app uses: carveToEditorDocument(), then
+ * editor.commands.setContent(), then serializeToCarve(editor.getJSON()).
  *
- * We assert on the semantically important tokens rather than byte-equality,
- * because both renderers normalize whitespace/structure. Lossy constructs are
- * documented inline (see the `lossy` notes) rather than hidden.
+ * The loader's preservation mode guarantees that constructs without an
+ * editable Tiptap representation survive load/save instead of disappearing.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
-import { carveToEditorHtml } from '../src/carve-import';
+import { carveToEditorDocument } from '../src/carve-import';
 
 let editor: Editor;
 
@@ -28,8 +27,7 @@ afterAll(() => {
 
 /** Run the app's full import + serialize round trip on a Carve source string. */
 function roundTrip(source: string): string {
-  const html = carveToEditorHtml(source, document);
-  editor.commands.setContent(html);
+  editor.commands.setContent(carveToEditorDocument(source));
   return serializeToCarve(editor.getJSON());
 }
 
@@ -82,14 +80,18 @@ const samples: Sample[] = [
   },
   {
     name: 'footnote reference + definition',
-    source: 'Text with a note[^1].\n\n[^1]: The note body.',
-    // carve-js auto-numbers the label to "1"; the ref + definition survive.
-    expect: ['[^1]', 'The note body.'],
+    source: 'Text with a note[^named].\n\n[^named]: The note body.',
+    expect: ['[^named]', 'The note body.'],
     absent: ['doc-noteref', 'doc-backlink', '↩'],
+  },
+  {
+    name: 'unsupported source is preserved instead of silently dropped',
+    source: '---toml\ntitle = "Kept"\n---\n\nBody.',
+    expect: ['---toml', 'title = "Kept"', 'Body.'],
   },
 ];
 
-describe('Carve round trip (source -> HTML -> editor -> source)', () => {
+describe('Carve round trip (source -> AST -> editor -> source)', () => {
   for (const sample of samples) {
     it(sample.name, () => {
       const out = roundTrip(sample.source);
