@@ -13,10 +13,15 @@
  * 1. A `github:owner/repo#sha` pin must match the lockfile's resolved commit.
  * 2. That commit must be on the repository's default branch. Pinning an
  *    unmerged branch build silently reverts everything that landed after it.
- * 3. The spec revision the pinned carve-grammars build was written against
- *    must not be older than the spec revision of the carve-js build this
- *    editor installs. That is the drift this watchdog exists for: a grammar
- *    that predates the engine cannot represent what the engine parses.
+ * 3. The spec revision the pinned carve-grammars build was written against is
+ *    compared with the spec revision of the carve-js build this editor
+ *    installs. A grammar that predates the engine cannot represent what the
+ *    engine parses. Whether that gap FAILS the check depends on whose engine it
+ *    is, decided from the installed revisions: when the lockfile's engine is
+ *    the exact commit carve-grammars pins for its own loader, it was hoisted
+ *    out of carve-grammars and nothing here can move it, so the finding is a
+ *    warning naming the repository that can. Any other engine is one this repo
+ *    installed, and pairing it with an older grammar fails.
  *
  * Usage: node scripts/check-carve-pins.mjs [package-dir]
  * Reads package.json and package-lock.json from <package-dir> (default: cwd).
@@ -56,6 +61,12 @@ function parseGitPin(spec) {
 /** The commit a lockfile entry resolved to, when it resolved to a git build. */
 function lockedCommit(lock, name) {
   return parseGitPin(lock.packages?.[`node_modules/${name}`]?.resolved ?? '');
+}
+
+/** A repository's package.json at a given ref, parsed. */
+async function packageJsonAt(repo, ref) {
+  const entry = await api(`/repos/${repo}/contents/package.json?ref=${ref}`);
+  return JSON.parse(Buffer.from(entry.content, entry.encoding).toString('utf8'));
 }
 
 /** The submodule commit a repository records at `path` for a given ref. */
@@ -121,11 +132,38 @@ if (!engineLocked) {
   } else {
     const range = await compare(SPEC_REPO, grammarsSpec, engineSpec);
     if (range.ahead_by > 0) {
-      errors.push(
-        `${GRAMMARS} is pinned to a build written against spec ${grammarsSpec.slice(0, 12)}, ` +
-          `which is ${range.ahead_by} commit(s) behind the spec ${engineSpec.slice(0, 12)} that the installed ` +
-          `${ENGINE} build was written against. The grammar cannot represent what the engine parses.`,
+      // WHOSE engine this is decides whether the gap is this repo's to close,
+      // and that is settled from the INSTALLED revisions rather than from how
+      // package.json happens to spell the dependency. carve-grammars pins the
+      // engine its own loader calls to an exact commit; when the lockfile's
+      // engine IS that commit, it was hoisted out of carve-grammars and nothing
+      // in this repository can move it. The only lever would be rolling the
+      // grammar pin back, which gives up every fix that landed after it.
+      //
+      // The gap is not a hazard this repo can create either way: the app hands
+      // carve-grammars SOURCE, not an AST. `carveToProseMirror(source)` parses
+      // with the engine carve-grammars nests, and the app's own engine is used
+      // only for the preview HTML, which never touches the grammar.
+      //
+      // So the same finding is reported either way and blocks only where it can
+      // be acted on. A grammar whose spec revision trails the engine it bundles
+      // is the normal state right after that engine is bumped, and it is
+      // carve-grammars' own promotion gate that closes it.
+      const grammarsOwnEngine = parseGitPin(
+        (await packageJsonAt(grammarsPin.repo, grammarsPin.sha)).dependencies?.[ENGINE],
       );
+      const message =
+        `${GRAMMARS} is pinned to a build written against spec ${grammarsSpec.slice(0, 12)}, ` +
+        `which is ${range.ahead_by} commit(s) behind the spec ${engineSpec.slice(0, 12)} that the installed ` +
+        `${ENGINE} build was written against. The grammar cannot represent what the engine parses.`;
+      if (grammarsOwnEngine?.sha === engineLocked.sha) {
+        warnings.push(
+          `${message} The installed engine is ${engineLocked.sha.slice(0, 12)}, the commit ${GRAMMARS} pins ` +
+            'for its own loader, so closing the gap is a carve-grammars change and not one this repository can make.',
+        );
+      } else {
+        errors.push(message);
+      }
     } else {
       // The other direction is not an error here: the editor cannot move the
       // engine that carve-grammars installs for its own loader, because that
