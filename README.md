@@ -38,13 +38,30 @@ npm run typecheck
 ## Dependencies
 
 `@markup-carve/carve` and `@markup-carve/carve-grammars` are ordinary npm
-dependencies. The grammar is pinned exactly to 0.1.3 because Carve remains
-pre-1.0 and patch releases may carry editor-visible behavior changes.
+dependencies. The grammar is pinned to a single carve-grammars commit on `main`
+rather than to a published version, because the productions this editor needs
+reach `main` before they reach npm - the language attribute (`{:TAG}`) landed
+three days after 0.1.3 published, and 0.1.4 is not on the registry. The pin is
+one reviewable line naming the build the editor runs against, and it moves
+without waiting on a release, the same shape the spec repo uses for its
+carve-js dependency.
+
+Only a merged `main` commit belongs in that pin: a branch build silently
+reverts everything that landed after it.
+
+`npm run check:pins` (and `.github/workflows/engine-drift.yml`) enforces that,
+plus three more things nothing watched before - the dependency has to be a
+commit pin at all, the lockfile has to resolve to the commit `package.json`
+names, and the pinned grammar may not be older than the spec revision the
+installed engine was built against. Moving back to a published version range is
+therefore a deliberate edit to `scripts/check-carve-pins.mjs`, not something a
+one-line dependency change can do quietly: a published tarball records no spec
+revision, so nothing about its freshness can be verified.
 
 The old vendored grammar was removed after 0.1.3 published. Its two local
 footnote parse-priority patches landed upstream in carve-grammars #199, so the
-published package now provides both the missing functionality and the fixes
-that previously required a downstream fork.
+package now provides both the missing functionality and the fixes that
+previously required a downstream fork.
 
 carve-grammars' `CarveKit` imports several Tiptap extensions beyond its declared
 peerDependencies (code-block, highlight, sub/superscript, image, link, table
@@ -69,9 +86,20 @@ silently discarded.
 - Admonition divs (`:::warning`) and their container class.
 - Footnotes (reference + definition), including their authored labels.
 - Unsupported constructs such as frontmatter through source preservation.
+- The language attribute: an imported `{lang="fr"}` span keeps its value on the
+  span mark and serializes back as the `{:fr}` sugar, a `<span lang>` in pasted
+  HTML parses onto the same mark, and a value that is not a language tag keeps
+  the `{lang="..."}` spelling. Asserted in `tests/language-attribute.test.ts`.
 
 **Lossy / normalized (documented, not hidden):**
 
+- **`{:TAG}` written directly in the Carve source pane** does not become a span
+  on import. The Tiptap layer carries the attribute in both directions, but the
+  parse happens in the carve-js build that carve-grammars pins for its own
+  loader (an exact commit inside carve-grammars, so this repository's pins
+  cannot move it), and that build predates the production: the run stays
+  literal text and comes back with the bracket escaped. Authoring the same span
+  as `{lang="fr"}` works today and serializes as `{:fr}`.
 - **CriticMarkup containing its own closing delimiter** (`+}` / `-}` inside
   `{+...+}` / `{-...-}`) cannot round-trip - Carve provides no escape for it.
   This is an upstream serializer limitation noted in carve-grammars.

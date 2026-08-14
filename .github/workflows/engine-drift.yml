@@ -3,10 +3,16 @@ name: Engine drift
 on:
   schedule:
     - cron: "0 5 * * *"
+  pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+      - scripts/check-carve-pins.mjs
+      - .github/workflows/engine-drift.yml
   workflow_dispatch:
 
 jobs:
-  registry-drift:
+  pin-drift:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -14,32 +20,14 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
 
-      - name: Compare declared Carve packages with the registry
-        run: |
-          set -euo pipefail
-
-          check() {
-            local pkg="$1" declared locked latest
-            declared="$(node -p "require('./package.json').dependencies['${pkg}'] || ''")"
-            locked="$(node -p "require('./package-lock.json').packages['node_modules/${pkg}']?.version || ''")"
-            latest="$(npm view "${pkg}" version 2>/dev/null | tr -d "'\"")"
-
-            if [ -z "${declared}" ] || [ -z "${locked}" ] || [ -z "${latest}" ]; then
-              echo "::error::${pkg}: declared=${declared:-missing}, locked=${locked:-missing}, latest=${latest:-missing}"
-              exit 1
-            fi
-            if [ "${declared}" != "${locked}" ]; then
-              echo "::error::${pkg}: package.json declares ${declared}, lockfile installs ${locked}"
-              exit 1
-            fi
-
-            echo "${pkg}: declared and locked at ${declared}; registry latest is ${latest}"
-            if [ "${locked}" != "${latest}" ]; then
-              echo "::warning::${pkg} ${latest} is published, but this editor is pinned to ${locked}"
-            fi
-          }
-
-          check '@markup-carve/carve'
-          check '@markup-carve/carve-grammars'
+      # Reads package.json and package-lock.json only, over the public GitHub
+      # API: the grammar pin has to name a merged commit, the lockfile has to
+      # agree with it, and the grammar may not be older than the spec revision
+      # the installed engine was built against. See the script header for why
+      # the previous declared-versus-locked string comparison never got past
+      # its first dependency.
+      - name: Check the Carve dependency pins
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check-carve-pins.mjs
