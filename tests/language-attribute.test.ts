@@ -55,6 +55,26 @@ describe('language attribute through import and serialize', () => {
     expect(out).not.toContain('lang="fr"');
   });
 
+  // The SHORT form typed in the source pane, which is what markup-carve/carve-wysiwyg#12
+  // reported. The editor's loader parses it with the engine carve-grammars
+  // installs for itself, not with this app's own `@markup-carve/carve`, so no
+  // pin here could reach it - only the grammar pin can.
+  //
+  // Asserted on the MARK. `A [bonjour]{:fr} end.` that the engine does not
+  // recognize is one text node the serializer writes back verbatim, so the
+  // round-tripped string is a fixed point at both pins and a string assertion
+  // would be vacuous. The absent backslash is checked as well, since the escape
+  // is what the reporter saw.
+  it('parses the {:fr} shorthand typed in the source pane onto the span mark', () => {
+    const out = fromCarve('A [bonjour]{:fr} end.');
+    const span = firstMarks().find((mark) => mark.type === 'carveSpan');
+    expect(span, `no carveSpan mark in ${JSON.stringify(firstMarks())}`).toBeDefined();
+    const attrs = span?.attrs as { lang?: string; keyValues?: Record<string, string> } | undefined;
+    expect(attrs?.keyValues?.lang ?? attrs?.lang).toBe('fr');
+    expect(out).toContain('[bonjour]{:fr}');
+    expect(out).not.toContain('\\[bonjour]');
+  });
+
   it('keeps a subtag intact in the sugar', () => {
     expect(fromCarve('A [x]{lang="zh-Hant"} end.')).toContain('[x]{:zh-Hant}');
   });

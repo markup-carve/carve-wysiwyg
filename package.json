@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@markup-carve/carve": "^0.1.2",
+    "@markup-carve/carve-grammars": "github:markup-carve/carve-grammars#c0e72914c6b76c81374b48d7a225cc66549934e4",
     "@tiptap/core": "^2.11.5",
     "@tiptap/extension-code-block": "^2.11.5",
     "@tiptap/extension-highlight": "^2.11.5",
@@ -30,7 +31,6 @@
     "@tiptap/extension-underline": "^2.11.5",
     "@tiptap/pm": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
-    "@markup-carve/carve-grammars": "github:markup-carve/carve-grammars#639db73ef4d8b32f7b7fad20e2ffafc3f4d9a8fc",
     "highlight.js": "^11.11.1",
     "prismjs": "^1.29.0"
   },
