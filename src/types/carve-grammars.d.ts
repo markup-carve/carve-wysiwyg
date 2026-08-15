@@ -18,6 +18,18 @@ declare module '@markup-carve/carve-grammars/tiptap' {
     options?: CarveLoaderOptions,
   ): JSONContent;
 
+  /**
+   * Convert a Carve AST document to a ProseMirror/Tiptap JSON document.
+   *
+   * The seam the loader itself uses. Declared here because it is the only way
+   * to exercise a node type the INSTALLED engine cannot parse yet - see
+   * tests/composite-figure.test.ts.
+   */
+  export function astToProseMirror(
+    ast: unknown,
+    options?: CarveLoaderOptions & { source?: string },
+  ): JSONContent;
+
   /** Serialize a Tiptap/ProseMirror JSON document to Carve markup. */
   export function serializeToCarve(doc: unknown): string;
 
