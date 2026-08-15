@@ -1,0 +1,131 @@
+{
+  "source": "{#fig-x}\n::: figure\n{#fig-a}\n![one](a.png)\n^ (a) One\n\n{#fig-b}\n![two](b.png)\n^ (b) Two\n:::\n^ Group caption\n",
+  "ast": {
+    "type": "document",
+    "children": [
+      {
+        "type": "figure_group",
+        "children": [
+          {
+            "type": "figure",
+            "target": {
+              "type": "image",
+              "src": "a.png",
+              "alt": "one",
+              "pos": {
+                "startLine": 4,
+                "endLine": 4,
+                "startColumn": 1,
+                "endColumn": 14,
+                "startOffset": 29,
+                "endOffset": 42
+              }
+            },
+            "caption": [
+              {
+                "type": "text",
+                "value": "(a) One",
+                "pos": {
+                  "startLine": 5,
+                  "endLine": 5,
+                  "startColumn": 3,
+                  "endColumn": 10,
+                  "startOffset": 45,
+                  "endOffset": 52
+                }
+              }
+            ],
+            "pos": {
+              "startLine": 4,
+              "endLine": 5,
+              "startColumn": 1,
+              "endColumn": 10,
+              "startOffset": 29,
+              "endOffset": 52
+            },
+            "attrs": {
+              "id": "fig-a",
+              "order": [
+                "#id"
+              ]
+            }
+          },
+          {
+            "type": "figure",
+            "target": {
+              "type": "image",
+              "src": "b.png",
+              "alt": "two",
+              "pos": {
+                "startLine": 8,
+                "endLine": 8,
+                "startColumn": 1,
+                "endColumn": 14,
+                "startOffset": 63,
+                "endOffset": 76
+              }
+            },
+            "caption": [
+              {
+                "type": "text",
+                "value": "(b) Two",
+                "pos": {
+                  "startLine": 9,
+                  "endLine": 9,
+                  "startColumn": 3,
+                  "endColumn": 10,
+                  "startOffset": 79,
+                  "endOffset": 86
+                }
+              }
+            ],
+            "pos": {
+              "startLine": 8,
+              "endLine": 9,
+              "startColumn": 1,
+              "endColumn": 10,
+              "startOffset": 63,
+              "endOffset": 86
+            },
+            "attrs": {
+              "id": "fig-b",
+              "order": [
+                "#id"
+              ]
+            }
+          }
+        ],
+        "caption": [
+          {
+            "type": "text",
+            "value": "Group caption",
+            "pos": {
+              "startLine": 11,
+              "endLine": 11,
+              "startColumn": 3,
+              "endColumn": 16,
+              "startOffset": 93,
+              "endOffset": 106
+            }
+          }
+        ],
+        "pos": {
+          "startLine": 2,
+          "endLine": 11,
+          "startColumn": 1,
+          "endColumn": 16,
+          "startOffset": 9,
+          "endOffset": 106
+        },
+        "attrs": {
+          "id": "fig-x",
+          "order": [
+            "#id"
+          ]
+        }
+      }
+    ],
+    "srcByteLength": 107
+  },
+  "capturedFrom": "markup-carve/carve-js 3f5dd8cb6b48d3dbf064f1a350c8493b93030170"
+}

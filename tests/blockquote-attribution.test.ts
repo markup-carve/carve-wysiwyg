@@ -17,6 +17,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
+import { setCarveDocument } from '../src/editor';
 
 let editor: Editor;
 
@@ -32,8 +33,12 @@ afterAll(() => {
 
 /** Load Carve, type somewhere that is NOT the attribution, then serialize. */
 function editElsewhereAndSerialize(source: string): string {
-  editor.commands.setContent(carveToEditorDocument(source));
+  setCarveDocument(editor, carveToEditorDocument(source));
   editor.commands.insertContentAt(1, 'EDITED');
+  // serializeToCarve on the raw editor JSON, deliberately NOT editorToCarve:
+  // the point is what the CONTENT tree holds, and the app's serializer would
+  // re-attach the document's source envelope, which is the very thing this
+  // test must not read.
   return serializeToCarve(editor.getJSON());
 }
 
@@ -65,7 +70,7 @@ describe("a quote's attribution survives an edit", () => {
   });
 
   it('holds the attribution in an editable node, not only the source envelope', () => {
-    editor.commands.setContent(carveToEditorDocument('> Stay hungry, stay foolish.\n^ Steve Jobs\n'));
+    setCarveDocument(editor, carveToEditorDocument('> Stay hungry, stay foolish.\n^ Steve Jobs\n'));
     expect(editableText()).toContain('Steve Jobs');
   });
 
@@ -76,7 +81,7 @@ describe("a quote's attribution survives an edit", () => {
   });
 
   it('control: the probe reads the content tree and not everything', () => {
-    editor.commands.setContent(carveToEditorDocument('> Just a quote\n'));
+    setCarveDocument(editor, carveToEditorDocument('> Just a quote\n'));
     expect(editableText()).toContain('Just a quote');
     expect(editableText()).not.toContain('Steve Jobs');
   });

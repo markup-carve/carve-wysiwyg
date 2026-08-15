@@ -3,15 +3,17 @@
  * serializeToCarve -> Carve source.
  *
  * This drives the exact same path the app uses: carveToEditorDocument(), then
- * editor.commands.setContent(), then serializeToCarve(editor.getJSON()).
+ * setCarveDocument() (which is setContent plus the source envelope), then
+ * editorToCarve().
  *
  * The loader's preservation mode guarantees that constructs without an
  * editable Tiptap representation survive load/save instead of disappearing.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
-import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
+import { CarveKit } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
+import { editorToCarve, setCarveDocument } from '../src/editor';
 
 let editor: Editor;
 
@@ -27,8 +29,8 @@ afterAll(() => {
 
 /** Run the app's full import + serialize round trip on a Carve source string. */
 function roundTrip(source: string): string {
-  editor.commands.setContent(carveToEditorDocument(source));
-  return serializeToCarve(editor.getJSON());
+  setCarveDocument(editor, carveToEditorDocument(source));
+  return editorToCarve(editor);
 }
 
 interface Sample {

@@ -12,6 +12,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
+import { editorToCarve, setCarveDocument } from '../src/editor';
 
 let editor: Editor;
 
@@ -27,8 +28,8 @@ afterAll(() => {
 
 /** Load Carve source the way the app does, then serialize the editor state. */
 function fromCarve(source: string): string {
-  editor.commands.setContent(carveToEditorDocument(source));
-  return serializeToCarve(editor.getJSON());
+  setCarveDocument(editor, carveToEditorDocument(source));
+  return editorToCarve(editor);
 }
 
 /** Load HTML the way a paste does, then serialize the editor state. */

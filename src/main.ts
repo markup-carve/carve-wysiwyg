@@ -15,7 +15,7 @@ import { Editor } from '@tiptap/core';
 import type {} from '@tiptap/starter-kit';
 import type {} from '@tiptap/extension-link';
 import type {} from '@tiptap/extension-underline';
-import { createCarveEditor, editorToCarve } from './editor';
+import { createCarveEditor, editorToCarve, setCarveDocument } from './editor';
 import { carveToEditorDocument, carveToHtmlRaw } from './carve-import';
 
 const SAMPLE = `# Carve WYSIWYG
@@ -62,9 +62,10 @@ function refreshOutputs(carve: string): void {
 
 /** Load Carve source into the editor (import direction). */
 function loadCarve(source: string): void {
-  const editorDocument = carveToEditorDocument(source);
+  // setCarveDocument, not setContent: the bridge's source envelope rides on
+  // the document's own attributes, which setContent does not carry (editor.ts).
   // emitUpdate defaults to false; we refresh the outputs explicitly below.
-  editor.commands.setContent(editorDocument);
+  setCarveDocument(editor, carveToEditorDocument(source));
   refreshOutputs(editorToCarve(editor));
 }
 
