@@ -86,6 +86,12 @@ silently discarded.
 - Admonition divs (`:::warning`) and their container class.
 - Footnotes (reference + definition), including their authored labels.
 - Unsupported constructs such as frontmatter through source preservation.
+- Block attributes above a construct the editor models only partly - a
+  `{#fig-x}` over a `:::` fence - through the document's source envelope. Loads
+  go through `setCarveDocument` and saves through `editorToCarve` for that
+  reason: Tiptap's `setContent` replaces the doc's content and leaves the doc
+  node's attributes behind, so the envelope has to be re-attached. See
+  `src/editor.ts`.
 - The language attribute: an imported `{lang="fr"}` span keeps its value on the
   span mark and serializes back as the `{:fr}` sugar, a `<span lang>` in pasted
   HTML parses onto the same mark, and a value that is not a language tag keeps
@@ -100,6 +106,16 @@ silently discarded.
   cannot move it), and that build predates the production: the run stays
   literal text and comes back with the bracket escaped. Authoring the same span
   as `{lang="fr"}` works today and serializes as `{:fr}`.
+- **Composite figures** (`::: figure` with no title and no label, Carve PART 9
+  section 4c) are not modelled as figures. The mapping is the CarveKit schema in
+  `@markup-carve/carve-grammars`, not this app, and the engine that parses the
+  editor's input is the one carve-grammars pins for its own loader - which
+  predates the construct. So today a composite figure is a generic container
+  and round-trips as one; when that engine moves, the group arrives as a single
+  read-only source atom until carve-grammars gives it a schema entry.
+  `tests/composite-figure.test.ts` holds both states and fails when the second
+  one changes, which is the signal to model it here. Tracked as
+  markup-carve/carve-wysiwyg#15.
 - **CriticMarkup containing its own closing delimiter** (`+}` / `-}` inside
   `{+...+}` / `{-...-}`) cannot round-trip - Carve provides no escape for it.
   This is an upstream serializer limitation noted in carve-grammars.
