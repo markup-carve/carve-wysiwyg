@@ -7,7 +7,7 @@
  * exposes the serializer so the live Carve source pane can update on every
  * change.
  */
-import { Editor } from '@tiptap/core';
+import { Editor, getSchema } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
 import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 
@@ -56,7 +56,13 @@ type Envelope = Record<string, unknown>;
  * own: the fingerprint is that check, and the serializer falls through to
  * ordinary serialization the moment the document is edited.
  */
-const envelopes = new WeakMap<Editor, Envelope>();
+const loaded = new WeakMap<Editor, { doc: JSONContent; envelope: Envelope }>();
+
+/**
+ * The CarveKit schema, read once, so the attribute values Tiptap materializes
+ * from a node's declared defaults can be told from values the bridge set.
+ */
+const schema = getSchema([CarveKit]);
 
 /** The envelope attrs of a bridge document, or null when it carries none. */
 function envelopeOf(doc: JSONContent): Envelope | null {
@@ -69,42 +75,93 @@ function envelopeOf(doc: JSONContent): Envelope | null {
   return Object.keys(kept).length ? kept : null;
 }
 
-/**
- * Drop attributes the editor materialized from schema defaults.
- *
- * The envelope is guarded by a FINGERPRINT of the document it was taken from,
- * and the fingerprint is over the bridge's JSON - which carries only the attrs
- * that were actually set. Tiptap hands back every attribute the schema
- * declares, so `{"class":"figure"}` returns as
- * `{"id":null,"keyValues":null,"label":null,"class":"figure","title":null}` and
- * the two never compare equal. Re-attaching the envelope without this is
- * therefore inert: the fingerprint check fails every time and the verbatim
- * source is never used.
- *
- * Dropping nulls is not a reinterpretation of the document. The serializer
- * reads every one of these with optional chaining, so an absent attribute and a
- * null one already mean the same thing to it - what changes is only whether the
- * fingerprint can recognize its own document.
- */
-function pruneDefaults(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(pruneDefaults);
-  if (!value || typeof value !== 'object') return value;
+/** Every attribute the schema declares for a node or mark, with its default. */
+function schemaDefaults(type: unknown): Record<string, unknown> | null {
+  if (typeof type !== 'string') return null;
+  const spec = schema.nodes[type] ?? schema.marks[type];
+  if (!spec) return null;
   const out: Record<string, unknown> = {};
-  for (const [key, inner] of Object.entries(value)) {
-    if (inner === null) continue;
-    out[key] = pruneDefaults(inner);
+  for (const [name, attr] of Object.entries(spec.spec.attrs ?? {})) {
+    out[name] = (attr as { default?: unknown }).default;
   }
-  const attrs = out['attrs'];
-  if (attrs && typeof attrs === 'object' && !Object.keys(attrs).length) delete out['attrs'];
   return out;
 }
 
-/** `editor.getJSON()` with the loaded document's envelope put back on it. */
+/**
+ * A document reduced to what the AUTHOR wrote, with everything the schema would
+ * put back stripped out.
+ *
+ * The point is to recognize an unedited document after a mount. Tiptap hands
+ * back every attribute a node's schema declares, so `{"class":"figure"}` comes
+ * back as `{"id":null,"keyValues":null,"label":null,"class":"figure",
+ * "title":null}` and the mounted document never compares equal to the one that
+ * was loaded.
+ *
+ * DROPPING NULLS IS NOT ENOUGH, and that is what this used to do. A default
+ * does not have to be null: `carveCaption` declares `short` with a default of
+ * `false`, so a caption came back carrying `{"short":false}` - not null, not
+ * pruned, never equal. The moment carve-grammars added that attribute, every
+ * document holding a caption stopped being recognized, the source envelope was
+ * discarded, and a block-attribute line above a construct the rich model does
+ * not carry was written back out without it. Nothing failed: the round trip
+ * simply became lossy, which is the failure mode the envelope exists to
+ * prevent.
+ *
+ * SYMMETRY IS THE OTHER HALF. This runs over BOTH documents, never over the
+ * mounted one alone. The bridge does set some attributes to a value that is
+ * also the schema default - `carveComment` writes `block: false` for a `%%`
+ * line - so pruning only the mounted side would break exactly the documents
+ * pruning is meant to keep.
+ */
+function authored(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(authored);
+  if (!value || typeof value !== 'object') return value;
+  const node = value as Record<string, unknown>;
+  const defaults = schemaDefaults(node['type']);
+  const out: Record<string, unknown> = {};
+  for (const [key, inner] of Object.entries(node)) {
+    if (inner === null) continue;
+    if (key !== 'attrs' || !inner || typeof inner !== 'object') {
+      out[key] = authored(inner);
+      continue;
+    }
+    const attrs: Record<string, unknown> = {};
+    for (const [name, attrValue] of Object.entries(inner as Record<string, unknown>)) {
+      if (attrValue === null) continue;
+      if (defaults && name in defaults && stable(attrValue) === stable(defaults[name])) continue;
+      attrs[name] = authored(attrValue);
+    }
+    if (Object.keys(attrs).length) out['attrs'] = attrs;
+  }
+  return out;
+}
+
+/** Key-order-independent string form, so two equal documents compare equal. */
+function stable(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  return '{' + Object.keys(value as object).sort()
+    .map((k) => JSON.stringify(k) + ':' + stable((value as Record<string, unknown>)[k]))
+    .join(',') + '}';
+}
+
+/**
+ * What to serialize: the document as loaded when the editor still holds it, and
+ * the editor's own JSON once it has been edited.
+ *
+ * Handing the serializer the ORIGINAL document rather than a reconstruction of
+ * it is what makes the envelope usable. Its fingerprint was taken over that
+ * exact JSON, and the envelope is only honored while the fingerprint matches -
+ * so anything less than the original is a guess at what the fingerprint will
+ * accept. After an edit there is nothing to preserve: the editor's document IS
+ * the document, and ordinary serialization is correct.
+ */
 function withEnvelope(editor: Editor, json: JSONContent): JSONContent {
-  const envelope = envelopes.get(editor);
-  if (!envelope) return json;
-  const pruned = pruneDefaults(json) as JSONContent;
-  return { ...pruned, attrs: { ...(pruned.attrs ?? {}), ...envelope } };
+  const entry = loaded.get(editor);
+  if (!entry) return json;
+  const unedited = stable(authored(json.content ?? []))
+    === stable(authored(entry.doc.content ?? []));
+  return unedited ? entry.doc : json;
 }
 
 export function createCarveEditor(opts: CarveEditorOptions): Editor {
@@ -127,8 +184,8 @@ export function createCarveEditor(opts: CarveEditorOptions): Editor {
  */
 export function setCarveDocument(editor: Editor, doc: JSONContent): void {
   const envelope = envelopeOf(doc);
-  if (envelope) envelopes.set(editor, envelope);
-  else envelopes.delete(editor);
+  if (envelope) loaded.set(editor, { doc, envelope });
+  else loaded.delete(editor);
   editor.commands.setContent(doc);
 }
 

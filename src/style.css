@@ -125,3 +125,46 @@ body {
 .hard-break { color: var(--muted); }
 .carve-insert { text-decoration: underline; text-decoration-color: #9ece6a; }
 .carve-delete { text-decoration: line-through; text-decoration-color: #f7768e; }
+
+/*
+ * Composite figures (Carve PART 9 section 4c).
+ *
+ * TWO SHAPES, ONE LOOK. The preview pane holds the engine's HTML - a
+ * `figure.carve-figure-group` wrapping a `div.carve-figure-panels` - while the
+ * editor holds CarveKit's node, which renders the panels directly inside the
+ * group with no panels row. Both are styled here so the group reads as one
+ * figure on either side of the split.
+ */
+.carve-figure-group,
+figure[data-carve-figure-group] {
+  margin: 0.75rem 0;
+  padding: 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+}
+.carve-figure-panels,
+figure[data-carve-figure-group] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+/* The group's own caption spans the row rather than sitting beside a panel. */
+figure[data-carve-figure-group] > figcaption {
+  flex-basis: 100%;
+}
+.carve-figure-panel,
+figure[data-carve-figure-group] > figure[data-carve-figure] {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+.carve-figure-panel img,
+figure[data-carve-figure-group] img {
+  max-width: 100%;
+}
+.carve-figure-group > figcaption,
+figure[data-carve-figure-group] > figcaption {
+  margin-top: 0.5rem;
+  font-style: italic;
+  color: var(--muted);
+}

@@ -1,13 +1,19 @@
 /**
- * A quote's `^ …` attribution, through the editor's own import and serialize
- * path.
+ * A caption on a quote, through the editor's own import and serialize path.
  *
- * The engine carries a caption on a quote as an `attribution` field on
- * `block_quote` rather than a `figure`/`figcaption` pair, and the pinned
- * carve-grammars loader has to project that field onto an editable node. When
- * it does not, the line survives only inside the whole-document source
- * envelope, which is keyed to a fingerprint of the untouched document - so the
- * FIRST EDIT drops it.
+ * WHICH SHAPE THE ENGINE USES HAS CHANGED TWICE, and this file deliberately
+ * does not care. PART 9 section 4a briefly made the caption an `attribution`
+ * field on `block_quote`; that clause is withdrawn (markup-carve/carve#1213),
+ * and section 4b now says a quote is not a special host - a captioned quote is
+ * a `figure` whose target is the quote, which the loader projects onto a
+ * `carveFigure`/`carveCaption` pair like any other captioned host. The
+ * assertions below are about the line reaching the user's document, not about
+ * the node it arrives in, so they held across both pins.
+ *
+ * What they DO depend on is the line reaching an editable node rather than
+ * only the whole-document source envelope, which is keyed to a fingerprint of
+ * the untouched document - so the FIRST EDIT drops anything that lives only
+ * there.
  *
  * That is why every case here EDITS before serializing. Loading and serializing
  * an untouched document returns the envelope verbatim and passes at any pin,
@@ -62,7 +68,7 @@ function editableText(): string {
   return ((doc.content ?? []) as Array<Parameters<typeof walk>[0]>).map(walk).join(' ');
 }
 
-describe("a quote's attribution survives an edit", () => {
+describe("a quote's caption survives an edit", () => {
   it('keeps the attribution when something else is edited', () => {
     const out = editElsewhereAndSerialize('> Stay hungry, stay foolish.\n^ Steve Jobs\n');
     expect(out).toContain('EDITED');

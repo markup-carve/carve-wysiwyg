@@ -93,29 +93,24 @@ silently discarded.
   node's attributes behind, so the envelope has to be re-attached. See
   `src/editor.ts`.
 - The language attribute: an imported `{lang="fr"}` span keeps its value on the
-  span mark and serializes back as the `{:fr}` sugar, a `<span lang>` in pasted
-  HTML parses onto the same mark, and a value that is not a language tag keeps
-  the `{lang="..."}` spelling. Asserted in `tests/language-attribute.test.ts`.
+  span mark and serializes back as the `{:fr}` sugar, the `{:fr}` shorthand
+  typed straight into the source pane parses onto that mark, a `<span lang>` in
+  pasted HTML parses onto the same mark, and a value that is not a language tag
+  keeps the `{lang="..."}` spelling. Asserted in
+  `tests/language-attribute.test.ts`.
+- **Composite figures** (`::: figure` with no title and no label, Carve PART 9
+  section 4c): the group is one editable `carveFigureGroup`, its direct figure
+  and table children are the panels in source order, and the `^ ` caption below
+  the closing fence is the group's. Everything else in the body stays where it
+  was written. An opener carrying a quoted title or a `[label]` is a different
+  production and remains the generic container it always was. The mapping is
+  the CarveKit schema in `@markup-carve/carve-grammars`, not this app; both
+  halves of it - an engine that parses the construct and a schema entry that
+  models it - arrived with markup-carve/carve-grammars#225. Asserted in
+  `tests/composite-figure.test.ts`.
 
 **Lossy / normalized (documented, not hidden):**
 
-- **`{:TAG}` written directly in the Carve source pane** does not become a span
-  on import. The Tiptap layer carries the attribute in both directions, but the
-  parse happens in the carve-js build that carve-grammars pins for its own
-  loader (an exact commit inside carve-grammars, so this repository's pins
-  cannot move it), and that build predates the production: the run stays
-  literal text and comes back with the bracket escaped. Authoring the same span
-  as `{lang="fr"}` works today and serializes as `{:fr}`.
-- **Composite figures** (`::: figure` with no title and no label, Carve PART 9
-  section 4c) are not modelled as figures. The mapping is the CarveKit schema in
-  `@markup-carve/carve-grammars`, not this app, and the engine that parses the
-  editor's input is the one carve-grammars pins for its own loader - which
-  predates the construct. So today a composite figure is a generic container
-  and round-trips as one; when that engine moves, the group arrives as a single
-  read-only source atom until carve-grammars gives it a schema entry.
-  `tests/composite-figure.test.ts` holds both states and fails when the second
-  one changes, which is the signal to model it here. Tracked as
-  markup-carve/carve-wysiwyg#15.
 - **CriticMarkup containing its own closing delimiter** (`+}` / `-}` inside
   `{+...+}` / `{-...-}`) cannot round-trip - Carve provides no escape for it.
   This is an upstream serializer limitation noted in carve-grammars.

@@ -106,3 +106,42 @@ describe('Carve round trip (source -> AST -> editor -> source)', () => {
     });
   }
 });
+
+/**
+ * The source envelope, which is what carries a block-attribute line above a
+ * construct the rich model does not fully hold. It is honored only while the
+ * mounted document is still recognizable as the one that was loaded, and
+ * `src/editor.ts` decides that by reducing both documents to what the author
+ * wrote - dropping every attribute Tiptap materialized from a schema default.
+ *
+ * BOTH sides, and that is the point of the second case. The bridge sets some
+ * attributes to a value that is ALSO the schema default, so reducing only the
+ * mounted side makes those documents stop matching and quietly discards the
+ * envelope they depend on. That is not hypothetical: `carveComment` declares
+ * `block` with a default of `false` and the bridge writes `block: false` for
+ * every `%%` line.
+ */
+describe('the source envelope survives a mount', () => {
+  it('keeps a block-attribute line above a container the editor models partly', () => {
+    expect(roundTrip('{#fig-x}\n::: note\nBody.\n:::\n')).toContain('{#fig-x}');
+  });
+
+  it('keeps it when the document also holds an attribute set to its own default', () => {
+    // A `%%` line, whose `block: false` equals the schema default. Reducing
+    // only the mounted document loses the `{#fig-x}` here while the case above
+    // still passes, so the pair is what pins the symmetry.
+    const out = roundTrip('{#fig-x}\n::: note\n%% a note\n:::\n');
+    expect(out).toContain('{#fig-x}');
+    expect(out).toContain('%% a note');
+  });
+
+  it('control: an edited document is serialized from the editor, not the envelope', () => {
+    setCarveDocument(editor, carveToEditorDocument('{#fig-x}\n::: note\nBody.\n:::\n'));
+    editor.commands.insertContentAt(2, 'EDITED');
+    const out = editorToCarve(editor);
+    expect(out).toContain('EDITED');
+    // Without this the two cases above would pass for a serializer that
+    // returned the loaded source unconditionally, which is not preservation.
+    expect(out).not.toBe('{#fig-x}\n::: note\nBody.\n:::\n');
+  });
+});
