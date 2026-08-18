@@ -112,7 +112,18 @@ describe('composite figures through the editor', () => {
   });
 
   it('so does the titled spelling, which is a different production', () => {
-    expect(roundTrip(TITLED)).toBe(TITLED);
+    // Not byte-equal to the input, and deliberately asserted as the output
+    // rather than as the fixture. The titled opener degrades to a plain div, so
+    // the trailing `^ Group caption` is an ordinary paragraph and not a caption
+    // - `renderHtml` gives the identical document with or without a blank line
+    // in front of it. carve-grammars 7ef51b6 now writes that blank line, and
+    // drops the trailing newline, which brings this spelling in line with the
+    // bare one above ("the serializer writes no trailing newline, which is true
+    // of every document it writes"). The round trip is a fixed point from the
+    // first pass, so nothing accumulates.
+    const written = TITLED.replace(':::\n^ Group caption\n', ':::\n\n^ Group caption');
+    expect(roundTrip(TITLED)).toBe(written);
+    expect(roundTrip(written)).toBe(written);
   });
 
   it('the group survives an edit, which is what the opaque atom could not do', () => {

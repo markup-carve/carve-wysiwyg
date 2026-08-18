@@ -70,8 +70,17 @@ describe('language attribute through import and serialize', () => {
     const out = fromCarve('A [bonjour]{:fr} end.');
     const span = firstMarks().find((mark) => mark.type === 'carveSpan');
     expect(span, `no carveSpan mark in ${JSON.stringify(firstMarks())}`).toBeDefined();
-    const attrs = span?.attrs as { lang?: string; keyValues?: Record<string, string> } | undefined;
-    expect(attrs?.keyValues?.lang ?? attrs?.lang).toBe('fr');
+    // carve-grammars 7ef51b6 renamed the mark's attribute bag from `keyValues`
+    // to `carveKeyValues` (and `order` to `carveAttrOrder`). Only the spelling
+    // moved: the mark still carries lang=fr, and the two string assertions
+    // below - the round trip and the absent escape, which are what
+    // markup-carve/carve-wysiwyg#12 actually reported - pass unchanged across
+    // the rename. Both names are read so this says "the production is carried"
+    // rather than "this exact build carries it".
+    const attrs = span?.attrs as
+      | { lang?: string; keyValues?: Record<string, string>; carveKeyValues?: Record<string, string> }
+      | undefined;
+    expect(attrs?.carveKeyValues?.lang ?? attrs?.keyValues?.lang ?? attrs?.lang).toBe('fr');
     expect(out).toContain('[bonjour]{:fr}');
     expect(out).not.toContain('\\[bonjour]');
   });
