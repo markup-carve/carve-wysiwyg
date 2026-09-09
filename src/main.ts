@@ -15,7 +15,7 @@ import { Editor } from '@tiptap/core';
 import type {} from '@tiptap/starter-kit';
 import type {} from '@tiptap/extension-link';
 import type {} from '@tiptap/extension-underline';
-import { createCarveEditor, editorToCarve, setCarveDocument } from './editor';
+import { createCarveEditor, editorToCarve, setCarveDocument, toggleOrderedList } from './editor';
 import { carveToEditorDocument, carveToHtmlRaw } from './carve-import';
 
 const SAMPLE = `# Carve WYSIWYG
@@ -84,7 +84,7 @@ const toolbarActions: Record<string, () => void> = {
   h1: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
   h2: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
   bulletList: () => editor.chain().focus().toggleBulletList().run(),
-  orderedList: () => editor.chain().focus().toggleOrderedList().run(),
+  orderedList: () => toggleOrderedList(editor),
   blockquote: () => editor.chain().focus().toggleBlockquote().run(),
   link: () => {
     const url = window.prompt('Link URL:');

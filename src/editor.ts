@@ -194,6 +194,18 @@ export function editorToCarve(editor: Editor): string {
   return serializeToCarve(withEnvelope(editor, editor.getJSON()));
 }
 
+/** Toggle an ordered list, using Carve's automatic marker for a new list. */
+export function toggleOrderedList(editor: Editor): boolean {
+  const removing = editor.isActive('orderedList');
+  const chain = editor.chain().focus().toggleOrderedList();
+  return removing
+    ? chain.run()
+    : chain.updateAttributes('orderedList', {
+        carveBareMarker: true,
+        carveDelim: '.',
+      }).run();
+}
+
 /** Re-serialize an arbitrary ProseMirror/Tiptap JSON doc. */
 export function jsonToCarve(json: unknown): string {
   return serializeToCarve(json);

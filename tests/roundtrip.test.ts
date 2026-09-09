@@ -13,7 +13,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { CarveKit } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
-import { editorToCarve, setCarveDocument } from '../src/editor';
+import { editorToCarve, setCarveDocument, toggleOrderedList } from '../src/editor';
 
 let editor: Editor;
 
@@ -59,9 +59,14 @@ const samples: Sample[] = [
     expect: ['- one', '- two', '- three'],
   },
   {
-    name: 'ordered list',
+    name: 'explicitly numbered ordered list',
     source: '1. alpha\n2. beta',
     expect: ['1. alpha', '2. beta'],
+  },
+  {
+    name: 'bare-dot ordered list',
+    source: '. alpha\n. beta',
+    expect: ['. alpha', '. beta'],
   },
   {
     name: 'link + inline code',
@@ -105,6 +110,17 @@ describe('Carve round trip (source -> AST -> editor -> source)', () => {
       }
     });
   }
+});
+
+describe('ordered-list authoring default', () => {
+  it('creates a bare-dot list while preserving explicit numbering on import', () => {
+    editor.commands.setContent('<p>alpha</p><p>beta</p>');
+    editor.commands.selectAll();
+    toggleOrderedList(editor);
+    expect(editorToCarve(editor)).toBe('. alpha\n. beta');
+
+    expect(roundTrip('1. alpha\n2. beta')).toBe('1. alpha\n2. beta');
+  });
 });
 
 /**
