@@ -86,7 +86,7 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'first', label: 'First tab', value: 'First' },
       { name: 'second', label: 'Second tab', value: 'Second' },
     ],
-    source: v => `::: tabs\n::: tab "${titleSafe(clean(v.first, 'First'))}"\nFirst panel.\n:::\n::: tab "${titleSafe(clean(v.second, 'Second'))}"\nSecond panel.\n:::\n:::\n`,
+    source: v => `::: tabs\n::: tab [${titleSafe(clean(v.first, 'First'))}]\nFirst panel.\n:::\n::: tab [${titleSafe(clean(v.second, 'Second'))}]\nSecond panel.\n:::\n:::\n`,
   },
   {
     id: 'code-group', label: 'Code group', group: 'Containers',

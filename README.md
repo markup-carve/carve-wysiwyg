@@ -31,6 +31,9 @@ a selection-aware attribute inspector; searchable heading targets; live lint
 findings with source-range navigation; and an explicit source-normalization
 diff. These controls generate Carve through the same AST bridge as imported
 documents, so their output is immediately editable and round-trip tested.
+The built-in starter document deliberately exercises frontmatter, an
+admonition, a captioned table, tabs, a cross-reference, and a footnote so the
+hosted sandbox demonstrates these capabilities without setup.
 
 ## Develop / build / test
 

@@ -21,24 +21,52 @@ import { createCarveEditor, editorToCarve, jsonToCarve, setCarveDocument, toggle
 import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
 
-const SAMPLE = `# Carve WYSIWYG
+const SAMPLE = `---
+title: Rich visual authoring
+lang: en
+---
 
-This is *bold*, /italic/, _underline_ and ~struck~ text.
+# Carve WYSIWYG
 
-A [link](https://github.com/markup-carve) and inline \`code\`.
+Use *Insert structure* or press Alt+Shift+K to add Carve-native content without
+memorizing its source syntax. Select a structure and open *Inspector* to edit
+its identifiers, classes, labels, and metadata.
 
-- first item
-- second item
+The standard toolbar still handles /italic/, _underline_, ~struck~, inline
+\`code\`, [links](https://github.com/markup-carve), quotes, and lists:
 
-> A blockquote.
+> Rich structure and familiar editing belong in the same surface.
 
-::: tip
-A tip admonition (Carve div).
+- bullet item
+. bare-dot ordered item
+
+::: tip "Everything stays editable"
+The source, lint findings, normalization diff, and semantic HTML preview update
+alongside the visual document.
 :::
 
-A footnote reference[^1].
+## Structured content
 
-[^1]: The footnote body.
+|=< Feature |=> Status |
+| Tables and figures | Editable |
+| References and citations | Searchable |
+| Containers and metadata | Inspectable |
+^ Authoring coverage
+
+::: tabs
+::: tab [Visual]
+Author rich structures with contextual controls.
+:::
+::: tab [Source]
+Inspect the exact Carve output at any time.
+:::
+:::
+
+See </#structured-content> for the target-aware cross-reference in action, and
+open this footnote[^fidelity]. Edit the document to see lint and normalization
+feedback update live.
+
+[^fidelity]: Unsupported syntax is retained visibly instead of being silently discarded.
 `;
 
 const $ = (sel: string): HTMLElement => {
@@ -242,7 +270,7 @@ dialog.querySelector('form')!.addEventListener('submit', event => {
   else if (selectedRecipeId) insertSelectedRecipe();
 });
 document.addEventListener('keydown', event => {
-  if (event.altKey && event.shiftKey && event.key.toLowerCase() === 'k') {
+  if (event.altKey && event.shiftKey && event.code === 'KeyK') {
     event.preventDefault();
     if (!dialog.open) openInsert();
   }
