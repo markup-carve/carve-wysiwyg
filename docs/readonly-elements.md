@@ -28,18 +28,18 @@ implemented and provides the interaction model for other block-level forms.
    collapsible forms. They expose the label plus expansion or destination/title
    fields while preserving uncommon attributes and source order.
 
-## Lower priority or already covered
+## Other implemented controls
 
-- Embeds already have a dedicated edit action and node view.
-- Tab sets and code groups already have switching, rename, add, remove, and
-  reorder controls.
-- Math, literal, raw-inline, substitutions, symbols, mentions, and empty marks
-  are small inline atoms. A generic selection inspector or lightweight popover
-  is preferable to permanent form chrome.
-- Comments are intentionally visually quiet. Editing them belongs in a small
-  source popover, but only after unsupported-source and reference workflows.
-- Citation definitions carry richer metadata and could eventually reuse the
-  definition-card pattern, after the common citation target picker exists.
+- Embeds have a dedicated edit action and node view.
+- Tab sets and code groups provide switching, rename, add, remove, and reorder
+  controls.
+- Math, substitutions, symbols, mentions, and tags use focused inline
+  popovers. Literal and raw-inline payloads, plus inline and block comments,
+  expose their text directly in the document.
+- Citation and footnote definitions use labeled definition views; citations,
+  footnotes, and cross-references provide target-aware pickers.
+- Captions, inline extensions, and empty marks are labeled so their structural
+  role remains visible while editing.
 
 ## Interaction rules to reuse
 

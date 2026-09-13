@@ -575,12 +575,35 @@ const toolbarActions: Record<string, () => void> = {
   },
 };
 
+const toolbarActive: Record<string, () => boolean> = {
+  bold: () => editor.isActive('bold'),
+  italic: () => editor.isActive('italic'),
+  underline: () => editor.isActive('underline'),
+  strike: () => editor.isActive('strike'),
+  code: () => editor.isActive('code'),
+  h1: () => editor.isActive('heading', { level: 1 }),
+  h2: () => editor.isActive('heading', { level: 2 }),
+  bulletList: () => editor.isActive('bulletList'),
+  orderedList: () => editor.isActive('orderedList'),
+  blockquote: () => editor.isActive('blockquote'),
+  link: () => editor.isActive('link'),
+};
+
+function updateToolbarState(): void {
+  document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => {
+    button.setAttribute('aria-pressed', String(toolbarActive[button.dataset.action!]?.() ?? false));
+  });
+}
+
 document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((btn) => {
   btn.addEventListener('click', () => {
     const action = btn.dataset.action!;
     toolbarActions[action]?.();
   });
 });
+editor.on('selectionUpdate', updateToolbarState);
+editor.on('transaction', updateToolbarState);
+updateToolbarState();
 
 $('#load-carve').addEventListener('click', () => {
   loadCarve(importEl.value);
