@@ -257,6 +257,12 @@ function openMetadata(): void {
   summary.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
+function openCodeBlock(): void {
+  openInsert();
+  chooseRecipe('code-block');
+}
+
+$('#open-code-block').addEventListener('click', openCodeBlock);
 $('#open-metadata').addEventListener('click', openMetadata);
 $('#open-insert').addEventListener('click', openInsert);
 $('#recipe-back').addEventListener('click', showRecipeList);

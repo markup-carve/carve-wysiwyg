@@ -24,6 +24,12 @@ const fenced = (kind: string, title: string, body: string): string => {
   const fence = ':'.repeat(Math.max(3, longest + 1));
   return `${fence} ${kind} "${titleSafe(title)}"\n${body}\n${fence}\n`;
 };
+const codeFenced = (language: string, body: string): string => {
+  const longest = Math.max(0, ...[...body.matchAll(/`+/g)].map(match => match[0].length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  const safeLanguage = clean(language, 'text').replace(/[^\w+./-]/g, '-');
+  return `${fence} ${safeLanguage}\n${body}\n${fence}\n`;
+};
 
 export const AUTHORING_RECIPES: AuthoringRecipe[] = [
   {
@@ -34,6 +40,15 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'id', label: 'ID', value: 'table-1' },
     ],
     source: v => `{#${safeLabel(v.id, 'table-1')}}\n| Name | Value |\n| :--- | ----: |\n| First | 1 |\n^ ${clean(v.caption, 'Table caption')}\n`,
+  },
+  {
+    id: 'code-block', label: 'Code block', group: 'Structure',
+    description: 'A syntax-labelled fenced block with safe fence widening.',
+    fields: [
+      { name: 'language', label: 'Language', value: 'javascript', required: true },
+      { name: 'body', label: 'Code', value: "console.log('Hello, Carve!');" },
+    ],
+    source: v => codeFenced(v.language, v.body),
   },
   {
     id: 'footnote', label: 'Footnote', group: 'References',

@@ -7,7 +7,7 @@ describe('rich authoring recipes', () => {
     const ids = AUTHORING_RECIPES.map(recipe => recipe.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual(expect.arrayContaining([
-      'table', 'footnote', 'crossref', 'figure', 'figure-group',
+      'table', 'code-block', 'footnote', 'crossref', 'figure', 'figure-group',
       'note', 'details', 'spoiler', 'tabs', 'code-group', 'citation',
       'abbreviation-definition', 'link-definition', 'metadata', 'attributes',
     ]));
@@ -25,6 +25,12 @@ describe('rich authoring recipes', () => {
     const figure = AUTHORING_RECIPES.find(recipe => recipe.id === 'figure')!;
     expect(figure.source({ id: 'my bad id', alt: 'Alt', url: 'x', caption: 'Cap' }))
       .toContain('{#my-bad-id}');
+  });
+
+  it('widens a code fence around backticks in its body', () => {
+    const recipe = AUTHORING_RECIPES.find(item => item.id === 'code-block')!;
+    expect(recipe.source({ language: 'typescript', body: 'const fence = ```;' }))
+      .toMatch(/^```` typescript\n/);
   });
 
   it('keeps hostile titles and multiline definition bodies inside their structures', () => {

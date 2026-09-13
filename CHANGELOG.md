@@ -17,6 +17,8 @@ Nothing released yet. The initial capability set:
 - Semantic Visual/Source tab activation, clearer edit-mode tables, accessible
   dark-theme links, exact-source fallback editors, document-aware reference
   pickers, and editable abbreviation/link-definition cards.
+- A distinct fenced **Code block** action with language/source fields and safe
+  fence widening, separate from inline code and multi-block code groups.
 - Canonical `carve-grammars` editor chrome and `carve-css` preview styles, with
   working tab switching in both the editor and rendered preview.
 - Prominent live-demo link and focused user README; development, dependency,

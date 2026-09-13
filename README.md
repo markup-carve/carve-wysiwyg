@@ -39,6 +39,9 @@ live lint findings with source-range navigation; and an explicit
 source-normalization diff. These controls generate Carve through the same AST
 bridge as imported documents, so their output is immediately editable and
 round-trip tested.
+Single fenced code blocks are available directly from the **Code block** toolbar
+button with language and source fields; related multi-language examples remain
+available as **Code group** in the structure palette.
 
 Visual/Source tabs are real keyboard- and touch-activatable controls. In edit
 mode, tables show cell boundaries and selection clearly; inline footnotes,
