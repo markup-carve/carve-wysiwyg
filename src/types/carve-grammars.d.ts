@@ -10,6 +10,7 @@ declare module '@markup-carve/carve-grammars/tiptap' {
 
   export interface CarveLoaderOptions {
     unsupported?: 'throw' | 'preserve';
+    parse?: { extensions?: unknown[] };
   }
 
   /** Parse Carve source directly into a ProseMirror/Tiptap JSON document. */

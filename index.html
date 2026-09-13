@@ -27,17 +27,28 @@
       <button data-action="blockquote" title="Blockquote">&ldquo; Quote</button>
       <span class="sep"></span>
       <button data-action="link" title="Link">&#128279; Link</button>
+      <span class="sep"></span>
+      <button id="open-insert" class="feature-button" title="Insert a rich Carve structure (Alt+Shift+K)">＋ Insert structure</button>
+      <button id="toggle-inspector" class="feature-button" title="Inspect attributes of the selected structure" aria-expanded="false">☷ Inspector</button>
     </div>
 
     <main class="panes">
       <section class="pane">
         <h2>Editor</h2>
         <div id="editor" class="editor-surface"></div>
+        <aside id="node-inspector" class="inspector" hidden>
+          <div class="section-heading"><h2>Selection inspector</h2><button id="close-inspector" aria-label="Close inspector">×</button></div>
+          <p id="inspector-help" class="muted">Select a structured node to edit its attributes.</p>
+          <form id="inspector-fields"></form>
+        </aside>
       </section>
 
       <section class="pane">
         <h2>Carve source</h2>
         <textarea id="carve-source" class="code-pane" readonly></textarea>
+        <details id="source-diff"><summary>Source normalization diff</summary><pre id="diff-output"></pre></details>
+        <h2>Validation</h2>
+        <ol id="lint-results" class="lint-results" aria-live="polite"></ol>
         <h2>Import Carve</h2>
         <textarea id="carve-import" class="code-pane" placeholder="Paste Carve source here..."></textarea>
         <button id="load-carve" class="primary">Load Carve &rarr; editor</button>
@@ -48,6 +59,23 @@
         <div id="html-preview" class="preview-pane"></div>
       </section>
     </main>
+
+    <dialog id="insert-dialog" aria-labelledby="insert-title">
+      <form method="dialog" class="dialog-shell">
+        <div class="dialog-heading"><div><h2 id="insert-title">Insert structure</h2><p>Choose a Carve-native structure, then edit its initial values.</p></div><button type="submit" value="cancel" formnovalidate aria-label="Close">×</button></div>
+        <label id="recipe-search-label" class="search-label">Search structures <input id="recipe-search" type="search" autocomplete="off" placeholder="Table, citation, tabs…"></label>
+        <div id="recipe-list" class="recipe-list" role="group" aria-label="Carve structures"></div>
+        <section id="recipe-editor" hidden>
+          <button id="recipe-back" type="button">← All structures</button>
+          <h3 id="recipe-name"></h3>
+          <p id="recipe-description" class="muted"></p>
+          <div id="recipe-fields"></div>
+          <label>Carve source preview<textarea id="recipe-preview" class="code-pane" readonly></textarea></label>
+          <div class="target-picker" hidden id="target-picker"><label>Available targets <select id="target-select"></select></label></div>
+          <div class="dialog-actions"><button type="submit" value="cancel" formnovalidate>Cancel</button><button id="insert-recipe" type="submit" value="insert" class="primary">Insert</button></div>
+        </section>
+      </form>
+    </dialog>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

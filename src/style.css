@@ -6,6 +6,8 @@
   --muted: #7a82a8;
   --accent: #7aa2f7;
   --accent-fg: #1a1b26;
+  --danger: #f7768e;
+  --success: #9ece6a;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -46,6 +48,12 @@ body {
   font-size: 0.85rem;
 }
 .toolbar button:hover { border-color: var(--accent); }
+.toolbar button:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toolbar .feature-button { border-color: var(--accent); }
 .toolbar .sep {
   width: 1px;
   height: 1.4rem;
@@ -109,6 +117,68 @@ body {
   cursor: pointer;
 }
 .primary:hover { filter: brightness(1.1); }
+
+.muted { color: var(--muted); }
+.section-heading,
+.dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.section-heading h2,
+.dialog-heading h2 { margin: 0; }
+.section-heading button,
+.dialog-heading button { background: transparent; border: 0; color: var(--text); font-size: 1.5rem; cursor: pointer; }
+
+.inspector {
+  margin-top: .75rem;
+  padding: .75rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.inspector form,
+#recipe-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .65rem; }
+.inspector label,
+#recipe-fields label,
+.dialog-shell > label,
+.target-picker label { display: grid; gap: .2rem; font-size: .8rem; color: var(--muted); }
+.inspector input,
+.dialog-shell input,
+.dialog-shell textarea,
+.dialog-shell select {
+  width: 100%; padding: .5rem; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--bg); color: var(--text); font: inherit;
+}
+
+dialog {
+  width: min(48rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem);
+  padding: 0; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--panel); color: var(--text);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .72); }
+.dialog-shell { padding: 1rem; }
+.dialog-heading p { margin: .2rem 0 1rem; color: var(--muted); }
+.search-label { margin-bottom: .75rem; }
+.recipe-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem; max-height: 55vh; overflow: auto; }
+.recipe-list h3 { grid-column: 1 / -1; margin: .65rem 0 0; color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+.recipe-list button {
+  display: grid; gap: .15rem; text-align: left; padding: .65rem; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text);
+}
+.recipe-list button:hover { border-color: var(--accent); }
+.recipe-list button span { color: var(--muted); font-size: .78rem; }
+#recipe-editor h3 { margin-bottom: .15rem; }
+#recipe-editor > button { border: 0; background: transparent; color: var(--accent); cursor: pointer; padding: 0; }
+#recipe-preview { min-height: 8rem; margin-top: .25rem; }
+.target-picker { margin-top: .75rem; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1rem; }
+.dialog-actions button { padding: .5rem .8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; }
+.dialog-actions .primary { background: var(--accent); color: var(--accent-fg); }
+
+#source-diff { margin-top: .5rem; color: var(--muted); }
+#source-diff pre { overflow: auto; padding: .5rem; background: var(--panel); color: var(--text); font-size: .75rem; }
+.lint-results { min-height: 2.5rem; margin: 0; padding-left: 1.4rem; }
+.lint-results button { border: 0; background: transparent; color: var(--danger); text-align: left; cursor: pointer; }
+.lint-ok { color: var(--success); }
+
+@media (max-width: 600px) { .recipe-list { grid-template-columns: 1fr; } }
 
 .preview-pane { overflow-x: auto; }
 .preview-pane :first-child { margin-top: 0; }

@@ -25,6 +25,13 @@ Three live panes:
 3. **HTML preview** - the rendered HTML of the current Carve source, via
    carve-js.
 
+The editor also provides a structured-insert palette (`Alt+Shift+K`) for
+tables, references, figures, containers, citations, metadata, and attributes;
+a selection-aware attribute inspector; searchable heading targets; live lint
+findings with source-range navigation; and an explicit source-normalization
+diff. These controls generate Carve through the same AST bridge as imported
+documents, so their output is immediately editable and round-trip tested.
+
 ## Develop / build / test
 
 ```bash
@@ -83,7 +90,7 @@ silently discarded.
 - Bullet and ordered lists
 - Links and inline code
 - Blockquotes
-- Admonition divs (`:::warning`) and their container class.
+- Admonition divs (`::: warning`) and their container class.
 - Footnotes (reference + definition), including their authored labels.
 - Unsupported constructs such as frontmatter through source preservation.
 - Block attributes above a construct the editor models only partly - a
@@ -133,3 +140,5 @@ should be checked on the deployed page:
 - Toolbar buttons toggling marks/blocks on a live selection.
 - Node views (the footnote `[^label]` chip, hard-break indicator, div styling).
 - That `onUpdate` refreshes the Carve source and HTML preview on each keystroke.
+- Keyboard and pointer use of the insert dialog and attribute inspector.
+- Navigation from a lint finding to its affected source range.
