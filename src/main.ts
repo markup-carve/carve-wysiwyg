@@ -44,6 +44,15 @@ its identifiers, classes, labels, and metadata.
 The standard toolbar still handles /italic/, _underline_, ~struck~, inline
 \`code\`, [links](https://github.com/markup-carve), quotes, and lists:
 
+This sentence has an editorial note{# Clarify this claim before publishing. #}.
+The annotation controls remain visible while you write. %% Inline review note
+
+%% Block comments now read as review cards and can be hidden from the toolbar.
+
+Direct inline editing is also available for {% a delimited review note %},
+!\`/kaet/\` literals, \`<kbd>\`{=html} raw content, {~draft~>final~}
+substitutions, $\`x^2\` math, @ada mentions, #review tags, and :rocket: symbols.
+
 \`\`\`javascript
 const message = 'The language control follows this full-width code.';
 \`\`\`
@@ -259,6 +268,33 @@ editor = createCarveEditor({
   element: editorEl,
   onUpdate: refreshOutputs,
 });
+
+const commentToggle = $('#toggle-comments') as HTMLButtonElement;
+let commentsVisible = true;
+
+function commentCount(): number {
+  let count = 0;
+  editor.state.doc.descendants(node => {
+    if (node.type.name === 'carveComment' || node.type.name === 'carveCommentInline') count += 1;
+    count += node.marks.filter(mark => mark.type.name === 'carveCriticComment').length;
+  });
+  return count;
+}
+
+function updateCommentToggle(): void {
+  const count = commentCount();
+  commentToggle.textContent = `${commentsVisible ? '◉' : '○'} Comments${count ? ` (${count})` : ''}`;
+  commentToggle.setAttribute('aria-pressed', String(commentsVisible));
+  commentToggle.title = `${commentsVisible ? 'Hide' : 'Show'} ${count || ''} editorial comment${count === 1 ? '' : 's'}`.replace(/\s+/g, ' ');
+}
+
+commentToggle.addEventListener('click', () => {
+  commentsVisible = !commentsVisible;
+  editorEl.classList.toggle('comments-hidden', !commentsVisible);
+  updateCommentToggle();
+});
+editor.on('update', updateCommentToggle);
+updateCommentToggle();
 
 function insertDocument(doc: JSONContent): void {
   const content = doc.content ?? [];

@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1b26" />
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
     <title>Carve WYSIWYG</title>
   </head>
   <body>
@@ -29,6 +31,7 @@
       <span class="sep"></span>
       <button data-action="link" title="Link">&#128279; Link</button>
       <span class="sep"></span>
+      <button id="toggle-comments" class="feature-button comment-toggle" type="button" aria-pressed="true" title="Show or hide editorial comments">◉ Comments</button>
       <button id="open-metadata" class="feature-button" title="Edit document title, language, and other frontmatter">⚙ Document metadata</button>
       <button id="open-insert" class="feature-button" title="Insert a rich Carve structure (Alt+Shift+K)">＋ Insert structure</button>
       <button id="toggle-inspector" class="feature-button" title="Inspect attributes of the selected structure" aria-expanded="false" aria-controls="node-inspector">☷ Inspector</button>

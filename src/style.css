@@ -76,6 +76,11 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .toolbar .feature-button { border-color: var(--accent); }
+.toolbar .comment-toggle[aria-pressed="true"] {
+  border-color: var(--carve-warn);
+  background: var(--carve-warn-wash);
+  color: #f3c77b;
+}
 .toolbar .sep {
   width: 1px;
   height: 1.4rem;
@@ -325,6 +330,68 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 .hard-break { color: var(--muted); }
 .carve-insert { text-decoration: underline; text-decoration-color: #9ece6a; }
 .carve-delete { text-decoration: line-through; text-decoration-color: #f7768e; }
+
+/* Editorial annotations should read as review UI, not ordinary document text. */
+.editor-surface .ProseMirror pre[data-carve-comment] {
+  position: relative;
+  margin-block: .8rem;
+  padding: .7rem .85rem .75rem 2.6rem;
+  border: 1px solid color-mix(in srgb, var(--carve-warn) 60%, var(--border));
+  border-inline-start: 4px solid var(--carve-warn);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--carve-warn-wash) 82%, var(--panel));
+  color: #e8d8b5;
+  font-family: inherit;
+  line-height: 1.45;
+}
+.editor-surface .ProseMirror pre[data-carve-comment]::before {
+  content: "✦  Comment";
+  color: #f3c77b;
+  letter-spacing: .09em;
+}
+.editor-surface .ProseMirror pre[data-carve-comment]::after {
+  content: "";
+  position: absolute;
+  inset-block: .65rem;
+  inset-inline-start: 1.25rem;
+  width: 1px;
+  background: color-mix(in srgb, var(--carve-warn) 35%, transparent);
+}
+.editor-surface .ProseMirror span[data-carve-comment-inline] {
+  display: inline;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--carve-warn-wash) 88%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--carve-warn) 55%, transparent);
+  color: #ead9b6;
+  padding: .08em .45em .12em;
+  white-space: normal;
+}
+.editor-surface .ProseMirror span[data-carve-comment-inline]::before {
+  content: "✦ ";
+  color: #f3c77b;
+  font-size: .85em;
+}
+.editor-surface .ProseMirror .critic-comment {
+  border-radius: .25em;
+  background: color-mix(in srgb, var(--carve-warn-wash) 90%, transparent);
+  box-shadow: inset 0 -.12em color-mix(in srgb, var(--carve-warn) 55%, transparent);
+  color: #f1dfbc;
+  text-decoration: none;
+  padding-inline: .12em;
+}
+.editor-surface .ProseMirror .critic-comment::after {
+  content: "✦";
+  margin-inline-start: .18em;
+  color: #f3c77b;
+  font-size: .7em;
+  vertical-align: super;
+}
+.editor-surface.comments-hidden .ProseMirror pre[data-carve-comment],
+.editor-surface.comments-hidden .ProseMirror span[data-carve-comment-inline],
+.editor-surface.comments-hidden .ProseMirror .critic-comment {
+  display: none;
+}
 
 /*
  * Composite figures (Carve PART 9 section 4c).
