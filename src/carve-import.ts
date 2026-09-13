@@ -3,11 +3,12 @@
  * bridge. Keeping this seam in one module makes the app exercise the same
  * public API that downstream editors consume.
  */
-import { carveToHtml, citations, codeGroup, details, parse, resolve, spoiler, tabs } from '@markup-carve/carve';
+import { carveToHtml, citations, codeGroup, details, parse, presets, resolve, spoiler, tabs } from '@markup-carve/carve';
 import { carveToProseMirror } from '@markup-carve/carve-grammars/tiptap';
 import type { JSONContent } from '@tiptap/core';
 
-const EXTENSIONS = [citations(), codeGroup(), details(), spoiler(), tabs()];
+const EXTENSIONS = [citations(), codeGroup(), details(), spoiler(), tabs(), ...presets()];
+export const DIAGRAM_LANGUAGES = new Set(['mermaid', 'graphviz', 'dot', 'd2', 'plantuml', 'wavedrom', 'abc', 'vega-lite', 'chart']);
 
 /** Parse Carve into the lossless document shape consumed by CarveKit. */
 export function carveToEditorDocument(source: string): JSONContent {
@@ -19,7 +20,17 @@ export function carveToEditorDocument(source: string): JSONContent {
 
 /** Render Carve source for the preview pane. */
 export function carveToHtmlRaw(source: string): string {
-  return carveToHtml(source, { extensions: EXTENSIONS });
+  const html = carveToHtml(source, { extensions: EXTENSIONS });
+  const withCodeLanguages = html.replace(
+    /<pre([^>]*)><code class="language-([^"\s]+)"/g,
+    '<pre$1 data-language="$2"><code class="language-$2"',
+  );
+  return withCodeLanguages.replace(/<pre([^>]*)>/g, (match, attrs: string) => {
+    if (/\sdata-language=/.test(attrs)) return match;
+    const classes = attrs.match(/\sclass="([^"]+)"/)?.[1] ?? '';
+    const language = classes.split(/\s+/).find(name => DIAGRAM_LANGUAGES.has(name));
+    return language ? `<pre${attrs} data-language="${language}">` : match;
+  });
 }
 
 export interface HeadingTarget { id: string; type: 'heading'; label: string }

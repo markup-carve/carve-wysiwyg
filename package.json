@@ -15,7 +15,7 @@
   "dependencies": {
     "@markup-carve/carve": "github:markup-carve/carve-js#8392a0324b6db4ffcb82302e1205a81cecaa9f00",
     "@markup-carve/carve-css": "^0.1.1",
-    "@markup-carve/carve-grammars": "github:markup-carve/carve-grammars#cc8a8b908e2bc90ec5ee48d3772d7173e12b7a17",
+    "@markup-carve/carve-grammars": "github:markup-carve/carve-grammars#eaa52758f81798653bc512e01910206d5831dd4c",
     "@tiptap/core": "^2.11.5",
     "@tiptap/extension-code-block": "^2.11.5",
     "@tiptap/extension-highlight": "^2.11.5",
@@ -33,6 +33,8 @@
     "@tiptap/pm": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
     "highlight.js": "^11.11.1",
+    "katex": "^0.18.7",
+    "mermaid": "11.17.2",
     "prismjs": "^1.29.0"
   },
   "devDependencies": {

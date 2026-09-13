@@ -9,9 +9,14 @@
  */
 import '@markup-carve/carve-grammars/tiptap/editor.css';
 import '@markup-carve/carve-css';
+import 'highlight.js/styles/github-dark.css';
+import 'katex/dist/katex.min.css';
 import './style.css';
 import { Editor } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
+import hljs from 'highlight.js/lib/common';
+import katex from 'katex';
+import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
 import { lintCarve } from '@markup-carve/carve';
 // CarveKit registers these extensions at runtime from a plain-JS package.
 // Import their declaration augmentations so chained toolbar commands remain
@@ -20,8 +25,10 @@ import type {} from '@tiptap/starter-kit';
 import type {} from '@tiptap/extension-link';
 import type {} from '@tiptap/extension-underline';
 import { createCarveEditor, editorToCarve, jsonToCarve, setCarveDocument, toggleOrderedList } from './editor';
-import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw } from './carve-import';
+import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
+
+hljs.registerLanguage('carve', carveHighlight);
 
 const SAMPLE = `---
 title: Rich visual authoring
@@ -37,6 +44,10 @@ its identifiers, classes, labels, and metadata.
 The standard toolbar still handles /italic/, _underline_, ~struck~, inline
 \`code\`, [links](https://github.com/markup-carve), quotes, and lists:
 
+\`\`\`javascript
+const message = 'The language control follows this full-width code.';
+\`\`\`
+
 > Rich structure and familiar editing belong in the same surface.
 
 - bullet item
@@ -49,33 +60,39 @@ alongside the visual document.
 
 ## Structured content
 
+\`\`\`mermaid
+flowchart LR
+  Source[Carve source] --> Editor[Visual editor]
+  Editor --> Preview[Rendered preview]
+\`\`\`
+
 |=< Feature |=> Status |
 | Tables and figures | Editable |
 | References and citations | Searchable |
 | Containers and metadata | Inspectable |
 ^ Authoring coverage
 
-::: tabs
-::: tab [Visual]
+:::: tabs
+:::: tab [Visual]
 Author rich structures with contextual controls.
-:::
-::: tab [Source]
+::::
+:::: tab [Source]
 Inspect the exact Carve output at any time.
-:::
-:::
+::::
+::::
 
 See </#structured-content> for the target-aware cross-reference in action, and
 open this footnote[^fidelity]. The AST is expanded below and [the project][carve]
 uses a reusable link definition. Evidence can be retargeted from [@carve2026].
 Edit the document to see lint and normalization feedback update live.
 
-[^fidelity]: Unsupported syntax is retained visibly instead of being silently discarded.
-
 *[AST]: Abstract Syntax Tree
+
+[@carve2026]: Markup Carve contributors. (2026). Carve.
 
 [carve]: https://github.com/markup-carve "Markup Carve"
 
-[@carve2026]: {} Markup Carve contributors. (2026). Carve.
+[^fidelity]: Unsupported syntax is retained visibly instead of being silently discarded.
 `;
 
 const $ = (sel: string): HTMLElement => {
@@ -92,8 +109,58 @@ const importEl = $('#carve-import') as HTMLTextAreaElement;
 let editor: Editor;
 let loadedSource = '';
 let selectedRecipeId = '';
+let previewRevision = 0;
+let mermaidLoader: Promise<(typeof import('mermaid'))['default']> | undefined;
+let mermaidTimer: number | undefined;
+let mermaidQueue = Promise.resolve();
+
+function loadMermaid(): Promise<(typeof import('mermaid'))['default']> {
+  mermaidLoader ??= import('mermaid').then(({ default: mermaid }) => {
+    mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'dark' });
+    return mermaid;
+  });
+  return mermaidLoader;
+}
+
+function showMermaidError(node: HTMLElement, error: unknown): void {
+  node.classList.add('diagram-error');
+  const message = document.createElement('p');
+  message.className = 'diagram-error-message';
+  message.setAttribute('role', 'alert');
+  message.textContent = `Mermaid could not render: ${error instanceof Error ? error.message : String(error)}`;
+  node.after(message);
+}
+
+function scheduleMermaid(revision: number): void {
+  window.clearTimeout(mermaidTimer);
+  mermaidTimer = window.setTimeout(() => {
+    mermaidQueue = mermaidQueue.catch(() => undefined).then(async () => {
+      if (revision !== previewRevision) return;
+      const nodes = [...previewEl.querySelectorAll<HTMLElement>('pre.mermaid')];
+      if (!nodes.length) return;
+      let mermaid: Awaited<ReturnType<typeof loadMermaid>>;
+      try {
+        mermaid = await loadMermaid();
+      } catch (error) {
+        if (revision === previewRevision) nodes.filter(node => node.isConnected).forEach(node => showMermaidError(node, error));
+        return;
+      }
+      if (revision !== previewRevision) return;
+      for (const node of nodes) {
+        if (revision !== previewRevision || !node.isConnected) return;
+        try {
+          await mermaid.run({ nodes: [node], suppressErrors: false });
+        } catch (error) {
+          if (revision !== previewRevision || !node.isConnected) return;
+          showMermaidError(node, error);
+        }
+      }
+    });
+  }, 250);
+}
 
 function refreshOutputs(carve: string): void {
+  const revision = ++previewRevision;
   sourceEl.value = carve;
   $('#diff-output').textContent = lineDiff(loadedSource, carve);
   const findings = lintCarve(carve);
@@ -120,6 +187,59 @@ function refreshOutputs(carve: string): void {
   }
   try {
     previewEl.innerHTML = carveToHtmlRaw(carve);
+    previewEl.querySelectorAll<HTMLElement>('.math[role="math"]').forEach(math => {
+      const wrapped = math.textContent ?? '';
+      const match = wrapped.match(/^\\\(([\s\S]*)\\\)$/) ?? wrapped.match(/^\\\[([\s\S]*)\\\]$/);
+      const tex = match?.[1] ?? wrapped;
+      katex.render(tex, math, {
+        displayMode: math.classList.contains('display'),
+        throwOnError: false,
+        strict: 'warn',
+      });
+    });
+    previewEl.querySelectorAll<HTMLElement>('pre[data-language]').forEach(pre => {
+      if (DIAGRAM_LANGUAGES.has(pre.dataset.language ?? '')) return;
+      const code = pre.querySelector<HTMLElement>('code[class*="language-"]');
+      const requestedLanguage = pre.dataset.language ?? '';
+      if (code && hljs.getLanguage(requestedLanguage)) hljs.highlightElement(code);
+      const toolbar = document.createElement('span');
+      toolbar.className = 'preview-code-toolbar';
+      const language = document.createElement('span');
+      language.className = 'preview-code-language';
+      language.textContent = pre.dataset.language ?? '';
+      const copy = document.createElement('button');
+      copy.className = 'preview-code-copy';
+      copy.type = 'button';
+      copy.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3m-8-8h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h3Z"/></svg>';
+      copy.setAttribute('aria-label', `Copy ${language.textContent || 'code'} to clipboard`);
+      const status = document.createElement('span');
+      status.className = 'visually-hidden';
+      status.setAttribute('role', 'status');
+      let resetTimer: number | undefined;
+      copy.addEventListener('click', async () => {
+        const source = pre.querySelector('code')?.textContent ?? pre.textContent ?? '';
+        window.clearTimeout(resetTimer);
+        try {
+          await navigator.clipboard.writeText(source);
+          copy.classList.add('is-copied');
+          copy.classList.remove('has-error');
+          status.textContent = 'Copied to clipboard';
+        } catch {
+          copy.classList.add('has-error');
+          status.textContent = 'Copy failed';
+        }
+        resetTimer = window.setTimeout(() => {
+          copy.classList.remove('is-copied', 'has-error');
+          status.textContent = '';
+        }, 1400);
+      });
+      toolbar.append(language, copy, status);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'preview-code-block';
+      pre.replaceWith(wrapper);
+      wrapper.append(pre, toolbar);
+    });
+    scheduleMermaid(revision);
   } catch (err) {
     previewEl.textContent = `Preview error: ${(err as Error).message}`;
   }
@@ -330,6 +450,21 @@ function inspectSelection(): void {
   entries.forEach(([name, value]) => {
     const label = document.createElement('label');
     label.textContent = name;
+    if (name === 'textAlign') {
+      const select = document.createElement('select');
+      select.name = name;
+      [['', 'Inherit/default'], ['left', 'Left'], ['center', 'Center'], ['right', 'Right']]
+        .forEach(([optionValue, text]) => {
+          const option = document.createElement('option');
+          option.value = optionValue;
+          option.textContent = text;
+          option.selected = optionValue === (value ?? '');
+          select.append(option);
+        });
+      label.append(select);
+      inspectorFields.append(label);
+      return;
+    }
     const input = document.createElement('input');
     input.name = name;
     input.value = value == null ? '' : String(value);
@@ -354,17 +489,31 @@ inspectorFields.addEventListener('submit', event => {
       : input.dataset.kind === 'boolean' ? input.value === 'true'
       : input.dataset.kind === 'number' ? Number(input.value) : input.value;
   });
+  inspectorFields.querySelectorAll<HTMLSelectElement>('select').forEach(select => {
+    attrs[select.name] = select.value || null;
+  });
   editor.chain().focus().updateAttributes(inspectedType, attrs).run();
   inspectSelection();
 });
 $('#toggle-inspector').addEventListener('click', () => {
   inspector.hidden = !inspector.hidden;
   $('#toggle-inspector').setAttribute('aria-expanded', String(!inspector.hidden));
-  if (!inspector.hidden) inspectSelection();
+  if (!inspector.hidden) {
+    inspectSelection();
+    $('#close-inspector').focus();
+  }
 });
-$('#close-inspector').addEventListener('click', () => {
+function closeInspector(): void {
   inspector.hidden = true;
   $('#toggle-inspector').setAttribute('aria-expanded', 'false');
+  $('#toggle-inspector').focus();
+}
+$('#close-inspector').addEventListener('click', closeInspector);
+inspector.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeInspector();
+  }
 });
 editor.on('selectionUpdate', () => { if (!inspector.hidden) inspectSelection(); });
 

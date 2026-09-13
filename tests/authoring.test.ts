@@ -10,6 +10,9 @@ describe('rich authoring recipes', () => {
       'table', 'code-block', 'footnote', 'crossref', 'figure', 'figure-group',
       'note', 'details', 'spoiler', 'tabs', 'code-group', 'citation',
       'abbreviation-definition', 'link-definition', 'metadata', 'attributes',
+      'diagram-mermaid', 'diagram-graphviz', 'diagram-d2', 'diagram-plantuml',
+      'diagram-wavedrom', 'diagram-abc', 'diagram-vega-lite', 'diagram-chart',
+      'math-inline', 'math-display',
     ]));
 
     for (const recipe of AUTHORING_RECIPES) {
@@ -50,6 +53,22 @@ describe('rich authoring recipes', () => {
     const html = carveToHtmlRaw(citation.source({ key: 'doe', entry: 'Doe.' }));
     expect(html).toContain('href="#ref-doe"');
     expect(html).toContain('class="references"');
+  });
+
+  it('labels fenced code and diagram previews with their language', () => {
+    expect(carveToHtmlRaw('``` javascript\nalert(1)\n```\n')).toContain('data-language="javascript"');
+    const mermaid = carveToHtmlRaw('``` mermaid\nA --> B\n```\n');
+    expect(mermaid).toContain('data-language="mermaid"');
+    expect(mermaid.match(/data-language=/g)).toHaveLength(1);
+    expect(carveToHtmlRaw('``` vega-lite\n{}\n```\n')).toContain('<div class="vega-lite"');
+  });
+
+  it('authors inline and display math without forcing inline content onto a new line', () => {
+    const inline = AUTHORING_RECIPES.find(recipe => recipe.id === 'math-inline')!;
+    const display = AUTHORING_RECIPES.find(recipe => recipe.id === 'math-display')!;
+    expect(inline.source({ tex: 'E = mc^2' })).toBe('$`E = mc^2`');
+    expect(inline.source({ tex: '`x`' })).toBe('$`` `x` ``');
+    expect(display.source({ tex: 'x^2' })).toBe('$$`x^2`\n');
   });
 });
 

@@ -41,7 +41,15 @@ bridge as imported documents, so their output is immediately editable and
 round-trip tested.
 Single fenced code blocks are available directly from the **Code block** toolbar
 button with language and source fields; related multi-language examples remain
-available as **Code group** in the structure palette.
+available as **Code group** in the structure palette. Preview fences provide
+syntax highlighting, a language label, and a hover/focus copy action; the bundled
+Carve highlighter is registered alongside common programming languages.
+The **Diagrams** palette group includes Mermaid, Graphviz, D2, PlantUML,
+WaveDrom, ABC music, Vega-Lite, and Chart.js source blocks. Mermaid renders
+lazily in this demo; the other formats demonstrate Carve's hydration elements
+for hosts to connect to their corresponding client or build-time renderer.
+Inline and display TeX are available under **Math** and rendered with KaTeX in
+the live preview.
 
 Visual/Source tabs are real keyboard- and touch-activatable controls. In edit
 mode, tables show cell boundaries and selection clearly; inline footnotes,

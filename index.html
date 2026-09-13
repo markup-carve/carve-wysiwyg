@@ -31,14 +31,14 @@
       <span class="sep"></span>
       <button id="open-metadata" class="feature-button" title="Edit document title, language, and other frontmatter">⚙ Document metadata</button>
       <button id="open-insert" class="feature-button" title="Insert a rich Carve structure (Alt+Shift+K)">＋ Insert structure</button>
-      <button id="toggle-inspector" class="feature-button" title="Inspect attributes of the selected structure" aria-expanded="false">☷ Inspector</button>
+      <button id="toggle-inspector" class="feature-button" title="Inspect attributes of the selected structure" aria-expanded="false" aria-controls="node-inspector">☷ Inspector</button>
     </div>
 
     <main class="panes">
       <section class="pane">
         <h2>Editor</h2>
         <div id="editor" class="editor-surface"></div>
-        <aside id="node-inspector" class="inspector" hidden>
+        <aside id="node-inspector" class="inspector" aria-label="Selection inspector" hidden>
           <div class="section-heading"><h2>Selection inspector</h2><button id="close-inspector" aria-label="Close inspector">×</button></div>
           <p id="inspector-help" class="muted">Select a structured node to edit its attributes.</p>
           <form id="inspector-fields"></form>
@@ -61,6 +61,12 @@
         <div id="html-preview" class="preview-pane carve"></div>
       </section>
     </main>
+
+    <footer class="app-footer">
+      <span>Built with <a href="https://github.com/markup-carve/carve">Carve</a>.</span>
+      <a href="https://github.com/markup-carve/carve-wysiwyg">Demo source</a>
+      <a href="https://github.com/markup-carve/carve-grammars">Editor kit &amp; grammars</a>
+    </footer>
 
     <dialog id="insert-dialog" aria-labelledby="insert-title">
       <form method="dialog" class="dialog-shell">

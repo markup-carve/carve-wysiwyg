@@ -37,3 +37,9 @@ declare module '@markup-carve/carve-grammars/tiptap' {
   /** Escape a plain text run so it round-trips as literal Carve text. */
   export function escapeCarve(text: string): string;
 }
+
+declare module '@markup-carve/carve-grammars/highlightjs/carve.js' {
+  import type { LanguageFn } from 'highlight.js';
+  const carve: LanguageFn;
+  export default carve;
+}

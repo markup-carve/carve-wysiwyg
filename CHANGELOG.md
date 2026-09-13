@@ -19,6 +19,15 @@ Nothing released yet. The initial capability set:
   pickers, and editable abbreviation/link-definition cards.
 - A distinct fenced **Code block** action with language/source fields and safe
   fence widening, separate from inline code and multi-block code groups.
+- Code languages use a right-aligned editor footer and a zero-layout-cost preview
+  hover overlay with an accessible copy action. Preview code is syntax-highlighted,
+  including Carve through the bundled `carve-grammars` highlight.js definition.
+- KaTeX renders inline and display math in preview, with both forms available from
+  the structure palette. Task lists, blockquotes, and inherited table alignment
+  now match the rendered surface more closely while editing.
+- Carve's extension presets are registered for both import and preview; Mermaid
+  is rendered lazily in-browser and included in the starter document, while
+  diagram source blocks remain separate from ordinary code controls.
 - Canonical `carve-grammars` editor chrome and `carve-css` preview styles, with
   working tab switching in both the editor and rendered preview.
 - Prominent live-demo link and focused user README; development, dependency,

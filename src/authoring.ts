@@ -30,6 +30,12 @@ const codeFenced = (language: string, body: string): string => {
   const safeLanguage = clean(language, 'text').replace(/[^\w+./-]/g, '-');
   return `${fence} ${safeLanguage}\n${body}\n${fence}\n`;
 };
+const mathFenced = (display: boolean, body: string): string => {
+  const longest = Math.max(0, ...[...body.matchAll(/`+/g)].map(match => match[0].length));
+  const fence = '`'.repeat(Math.max(1, longest + 1));
+  const pad = body.startsWith('`') || body.endsWith('`') || body === '' ? ' ' : '';
+  return `${display ? '$$' : '$'}${fence}${pad}${body}${pad}${fence}${display ? '\n' : ''}`;
+};
 
 export const AUTHORING_RECIPES: AuthoringRecipe[] = [
   {
@@ -49,6 +55,35 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'body', label: 'Code', value: "console.log('Hello, Carve!');" },
     ],
     source: v => codeFenced(v.language, v.body),
+  },
+  ...[
+    ['mermaid', 'Mermaid', 'flowchart LR\n  A[Source] --> B[Preview]'],
+    ['graphviz', 'Graphviz', 'digraph G { source -> preview }'],
+    ['d2', 'D2', 'source -> preview'],
+    ['plantuml', 'PlantUML', '@startuml\nAlice -> Bob: Hello\n@enduml'],
+    ['wavedrom', 'WaveDrom', '{ signal: [{ name: "clk", wave: "p....." }] }'],
+    ['abc', 'ABC music', 'X:1\nT:Scale\nK:C\nC D E F G A B c'],
+    ['vega-lite', 'Vega-Lite', '{"mark":"bar","data":{"values":[{"x":"A","y":2}]},"encoding":{"x":{"field":"x"},"y":{"field":"y"}}}'],
+    ['chart', 'Chart.js', '{"type":"bar","data":{"labels":["A"],"datasets":[{"data":[2]}]}}'],
+  ].map(([id, label, example]): AuthoringRecipe => ({
+    id: `diagram-${id}`,
+    label,
+    group: 'Diagrams',
+    description: `${label} source block for client-side or build-time rendering.`,
+    fields: [{ name: 'body', label: `${label} source`, value: example, required: true }],
+    source: v => codeFenced(id, v.body),
+  })),
+  {
+    id: 'math-inline', label: 'Inline math', group: 'Math',
+    description: 'TeX mathematics that flows within a paragraph.',
+    fields: [{ name: 'tex', label: 'TeX', value: 'E = mc^2', required: true }],
+    source: v => mathFenced(false, clean(v.tex, 'E = mc^2')),
+  },
+  {
+    id: 'math-display', label: 'Display math', group: 'Math',
+    description: 'TeX mathematics rendered as a standalone display.',
+    fields: [{ name: 'tex', label: 'TeX', value: '\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}', required: true }],
+    source: v => mathFenced(true, clean(v.tex, 'x^2 + y^2')),
   },
   {
     id: 'footnote', label: 'Footnote', group: 'References',
@@ -120,7 +155,7 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'first', label: 'First tab', value: 'First' },
       { name: 'second', label: 'Second tab', value: 'Second' },
     ],
-    source: v => `::: tabs\n::: tab [${titleSafe(clean(v.first, 'First'))}]\nFirst panel.\n:::\n::: tab [${titleSafe(clean(v.second, 'Second'))}]\nSecond panel.\n:::\n:::\n`,
+    source: v => `:::: tabs\n:::: tab [${titleSafe(clean(v.first, 'First'))}]\nFirst panel.\n::::\n:::: tab [${titleSafe(clean(v.second, 'Second'))}]\nSecond panel.\n::::\n::::\n`,
   },
   {
     id: 'code-group', label: 'Code group', group: 'Containers',
