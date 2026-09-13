@@ -14,6 +14,9 @@ Nothing released yet. The initial capability set:
   searchable cross-reference targets, and structured starter document.
 - Collapsible document-metadata editing for common frontmatter fields, with a
   raw YAML/TOML escape hatch and a toolbar shortcut to the card.
+- Semantic Visual/Source tab activation, clearer edit-mode tables, accessible
+  dark-theme links, exact-source fallback editors, document-aware reference
+  pickers, and editable abbreviation/link-definition cards.
 - Canonical `carve-grammars` editor chrome and `carve-css` preview styles, with
   working tab switching in both the editor and rendered preview.
 - Prominent live-demo link and focused user README; development, dependency,

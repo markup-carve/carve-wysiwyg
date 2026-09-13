@@ -51,6 +51,25 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
     source: v => `See </#${safeLabel(v.target, 'figure-1')}>.\n`,
   },
   {
+    id: 'abbreviation-definition', label: 'Abbreviation definition', group: 'References',
+    description: 'A reusable abbreviation and its expansion.',
+    fields: [
+      { name: 'abbr', label: 'Abbreviation', value: 'HTML', required: true },
+      { name: 'expansion', label: 'Expansion', value: 'HyperText Markup Language', required: true },
+    ],
+    source: v => `*[${clean(v.abbr, 'HTML').replace(/[\]\\]/g, '')}]: ${clean(v.expansion, 'HyperText Markup Language').replace(/\n/g, ' ')}\n`,
+  },
+  {
+    id: 'link-definition', label: 'Link definition', group: 'References',
+    description: 'A reusable link destination with an optional title.',
+    fields: [
+      { name: 'label', label: 'Label', value: 'project', required: true },
+      { name: 'url', label: 'Destination', value: 'https://github.com/markup-carve', required: true },
+      { name: 'title', label: 'Title', value: 'Markup Carve' },
+    ],
+    source: v => `[${safeLabel(v.label, 'project')}]: ${clean(v.url, 'https://github.com/markup-carve')}${v.title.trim() ? ` "${titleSafe(v.title.trim())}"` : ''}\n`,
+  },
+  {
     id: 'figure', label: 'Figure', group: 'Media',
     description: 'Image, accessible alternative text, caption, and ID.',
     fields: [

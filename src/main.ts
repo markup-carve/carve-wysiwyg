@@ -65,10 +65,17 @@ Inspect the exact Carve output at any time.
 :::
 
 See </#structured-content> for the target-aware cross-reference in action, and
-open this footnote[^fidelity]. Edit the document to see lint and normalization
-feedback update live.
+open this footnote[^fidelity]. The AST is expanded below and [the project][carve]
+uses a reusable link definition. Evidence can be retargeted from [@carve2026].
+Edit the document to see lint and normalization feedback update live.
 
 [^fidelity]: Unsupported syntax is retained visibly instead of being silently discarded.
+
+*[AST]: Abstract Syntax Tree
+
+[carve]: https://github.com/markup-carve "Markup Carve"
+
+[@carve2026]: {} Markup Carve contributors. (2026). Carve.
 `;
 
 const $ = (sel: string): HTMLElement => {

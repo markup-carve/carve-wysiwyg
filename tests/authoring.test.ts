@@ -9,7 +9,7 @@ describe('rich authoring recipes', () => {
     expect(ids).toEqual(expect.arrayContaining([
       'table', 'footnote', 'crossref', 'figure', 'figure-group',
       'note', 'details', 'spoiler', 'tabs', 'code-group', 'citation',
-      'metadata', 'attributes',
+      'abbreviation-definition', 'link-definition', 'metadata', 'attributes',
     ]));
 
     for (const recipe of AUTHORING_RECIPES) {

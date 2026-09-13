@@ -55,6 +55,12 @@ release, also verify these interactions in a real browser:
 
 - Type, select text, and move the caret in the editor.
 - Toggle marks and blocks from the toolbar.
+- Switch Visual/Source tabs with pointer and keyboard activation and confirm
+  the selected panel remains open after focus and selection changes.
+- Confirm table borders, headers, alternating rows, selected cells, and links
+  remain clear in the dark editor theme.
+- Exercise reference pickers, definition cards, and exact-source fallback
+  controls when their corresponding nodes are present.
 - Open **Document metadata**, edit a common field and raw frontmatter, then
   confirm the source updates and the card collapses again.
 - Inspect footnotes, hard breaks, containers, figures, and other node views.

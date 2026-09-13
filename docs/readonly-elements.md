@@ -4,30 +4,29 @@ This audit covers Carve nodes currently represented as atomic or otherwise
 source-preserved in the shared Tiptap grammar. The document-metadata card is now
 implemented and provides the interaction model for other block-level forms.
 
-## Top three additions
+## Implemented additions
 
 1. **Unsupported block and inline source editor**
 
-   Give `carveUnsupported` and `carveUnsupportedInline` an explicit raw-source
-   control with validation. These nodes are the lossless fallback for syntax
+   `carveUnsupported` and `carveUnsupportedInline` now have an explicit exact-source
+   control. These nodes are the lossless fallback for syntax
    the visual schema does not understand, so making their payload editable
    closes the broadest remaining dead end without pretending to understand its
    structure.
 
 2. **Reference picker popovers**
 
-   Give footnotes, cross-references, and citations a compact click/keyboard
-   popover for changing their target. Populate it from definitions and heading
+   Footnotes, cross-references, and citations now have a compact click/keyboard
+   popover for changing their target, populated from definitions and heading
    ids already present in the document, with a plain text fallback for unresolved
    or externally supplied targets. These are inline chips, so a collapsible
    block form would be too heavy.
 
 3. **Definition cards**
 
-   Use compact collapsible forms for abbreviation definitions and link-reference
-   definitions. Expose the label plus expansion or destination/title fields,
-   while retaining a raw field for uncommon attributes and preserving source
-   order.
+   Abbreviation definitions and link-reference definitions now use compact
+   collapsible forms. They expose the label plus expansion or destination/title
+   fields while preserving uncommon attributes and source order.
 
 ## Lower priority or already covered
 
