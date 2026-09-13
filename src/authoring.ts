@@ -28,7 +28,7 @@ const codeFenced = (language: string, body: string): string => {
   const longest = Math.max(0, ...[...body.matchAll(/`+/g)].map(match => match[0].length));
   const fence = '`'.repeat(Math.max(3, longest + 1));
   const safeLanguage = clean(language, 'text').replace(/[^\w+./-]/g, '-');
-  return `${fence} ${safeLanguage}\n${body}\n${fence}\n`;
+  return `${fence}${safeLanguage}\n${body}\n${fence}\n`;
 };
 const mathFenced = (display: boolean, body: string): string => {
   const longest = Math.max(0, ...[...body.matchAll(/`+/g)].map(match => match[0].length));
@@ -161,7 +161,7 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
     id: 'code-group', label: 'Code group', group: 'Containers',
     description: 'Related, language-labelled code examples.',
     fields: [{ name: 'title', label: 'Title', value: 'Examples' }],
-    source: v => `::: code-group "${titleSafe(clean(v.title, 'Examples'))}"\n\`\`\` javascript\nconsole.log('Hello')\n\`\`\`\n\`\`\` python\nprint('Hello')\n\`\`\`\n:::\n`,
+    source: v => `::: code-group "${titleSafe(clean(v.title, 'Examples'))}"\n\`\`\`javascript\nconsole.log('Hello')\n\`\`\`\n\`\`\`python\nprint('Hello')\n\`\`\`\n:::\n`,
   },
   {
     id: 'citation', label: 'Citation', group: 'References',
@@ -170,7 +170,7 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'key', label: 'Citation key', value: 'doe2026', required: true },
       { name: 'entry', label: 'Bibliography entry', value: 'Doe, J. (2026). Example.' },
     ],
-    source: v => `Evidence [@${safeLabel(v.key, 'doe2026')}].\n\n[@${safeLabel(v.key, 'doe2026')}]: {} ${continuation(clean(v.entry, 'Doe, J. (2026). Example.'))}\n`,
+    source: v => `Evidence [@${safeLabel(v.key, 'doe2026')}].\n\n[@${safeLabel(v.key, 'doe2026')}]: ${continuation(clean(v.entry, 'Doe, J. (2026). Example.'))}\n`,
   },
   {
     id: 'metadata', label: 'Document metadata', group: 'Document',

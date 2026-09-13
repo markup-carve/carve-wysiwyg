@@ -8,9 +8,17 @@
  * first dependency, because `^0.1.2` never equals `0.1.2`; it therefore never
  * reached the grammar pin it was meant to watch.
  *
- * What this checks instead:
+ * carve-grammars is consumed two ways, and the watchdog covers both:
  *
- * 1. A `github:owner/repo#sha` pin must match the lockfile's resolved commit.
+ * A. A published version spec (e.g. `^0.1.8`). The lockfile must install it
+ *    from the npm registry, and the installed version is compared with the
+ *    latest published on npm; trailing it is a warning, so the pin that stops
+ *    moving still surfaces. A published tarball records no spec revision, so
+ *    the grammar-versus-engine freshness comparison in (3) cannot run for it -
+ *    the npm-latest check is its stand-in.
+ * B. A `github:owner/repo#sha` commit pin, checked as before:
+ *
+ * 1. The pin must match the lockfile's resolved commit.
  * 2. That commit must be on the repository's default branch. Pinning an
  *    unmerged branch build silently reverts everything that landed after it.
  * 3. The spec revision the pinned carve-grammars build was written against is
@@ -63,6 +71,67 @@ function lockedCommit(lock, name) {
   return parseGitPin(lock.packages?.[`node_modules/${name}`]?.resolved ?? '');
 }
 
+/** The lockfile entry (version + resolved url) for an installed package. */
+function lockedEntry(lock, name) {
+  return lock.packages?.[`node_modules/${name}`] ?? null;
+}
+
+/** `x.y.z` -> [x, y, z]; anything without a numeric core -> null. */
+function parseVersion(v) {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(v ?? '');
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+}
+
+/** -1 / 0 / 1 comparing two `x.y.z` strings; null if either is unparseable. */
+function compareVersions(a, b) {
+  const pa = parseVersion(a);
+  const pb = parseVersion(b);
+  if (!pa || !pb) return null;
+  for (let i = 0; i < 3; i += 1) {
+    if (pa[i] !== pb[i]) return pa[i] < pb[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+/**
+ * Whether `version` falls within `range`, for the operators this repo uses
+ * (exact, `^`, `~`, `>=`). Returns null for a range shape it does not model, so
+ * an unrecognized spec is reported rather than falsely failed.
+ */
+function satisfies(version, range) {
+  const v = parseVersion(version);
+  if (!v || !range) return null;
+  const caret = /^\^(\d+\.\d+\.\d+)/.exec(range);
+  if (caret) {
+    const [a, b] = parseVersion(caret[1]);
+    const floor = compareVersions(version, caret[1]) >= 0;
+    // npm caret keeps the leftmost non-zero component fixed: ^1.2.3 -> <2.0.0,
+    // ^0.2.3 -> <0.3.0, ^0.0.3 -> ==0.0.3.
+    if (a > 0) return floor && v[0] === a;
+    if (b > 0) return floor && v[0] === 0 && v[1] === b;
+    return version === caret[1];
+  }
+  const tilde = /^~(\d+\.\d+\.\d+)/.exec(range);
+  if (tilde) {
+    const [a, b] = parseVersion(tilde[1]);
+    return compareVersions(version, tilde[1]) >= 0 && v[0] === a && v[1] === b;
+  }
+  const gte = /^>=\s*(\d+\.\d+\.\d+)/.exec(range);
+  if (gte) return compareVersions(version, gte[1]) >= 0;
+  if (parseVersion(range) && /^\d+\.\d+\.\d+$/.test(range.trim())) return version === range.trim();
+  return null;
+}
+
+/** The `latest` dist-tag a package publishes on the npm registry. */
+async function npmLatest(name) {
+  const response = await fetch(`https://registry.npmjs.org/${name.replace('/', '%2F')}`);
+  if (!response.ok) {
+    throw new Error(`GET registry ${name} -> ${response.status} ${response.statusText}`);
+  }
+  const body = await response.json();
+  return body['dist-tags']?.latest ?? null;
+}
+
 /** A repository's package.json at a given ref, parsed. */
 async function packageJsonAt(repo, ref) {
   const entry = await api(`/repos/${repo}/contents/package.json?ref=${ref}`);
@@ -89,15 +158,48 @@ const grammarsPin = parseGitPin(declaredGrammars);
 const grammarsLocked = lockedCommit(lock, GRAMMARS);
 
 if (!grammarsPin) {
-  // Skipping here would make every check below unreachable by editing one
-  // line of package.json, which is the shape of drift this script exists to
-  // catch. A published tarball records no spec revision, so a version spec
-  // cannot be checked for staleness at all - relaxing this has to be a
-  // deliberate edit to this file, not a silent pass.
-  errors.push(
-    `${GRAMMARS} is declared as "${declaredGrammars}", which is not a github:owner/repo#<40-hex> commit pin. ` +
-      'A published version records no spec revision, so nothing below can be verified.',
-  );
+  // A published version spec. carve-grammars now ships to npm, so this is the
+  // normal state, not drift - but the spec-revision freshness check in (3)
+  // needs a git commit on both sides and cannot run against a tarball, so the
+  // registry's latest version stands in as the "has this pin stopped moving"
+  // signal. The lockfile must install it from the registry; a version spec
+  // that resolved to a git build is inconsistent and gets flagged.
+  const entry = lockedEntry(lock, GRAMMARS);
+  const resolved = entry?.resolved ?? '';
+  const lockedVersion = entry?.version;
+  const lockedRootSpec = lock.packages?.['']?.dependencies?.[GRAMMARS];
+  if (!resolved.startsWith('https://registry.npmjs.org/')) {
+    errors.push(
+      `${GRAMMARS} is declared as "${declaredGrammars}" but the lockfile resolves it from ` +
+        `"${resolved || 'nothing'}", not the npm registry. Run npm install so the lockfile installs the published package.`,
+    );
+  } else if (lockedRootSpec !== declaredGrammars) {
+    // The lockfile records the spec it was generated from; if it differs from
+    // package.json, someone edited one without regenerating the other. npm ci
+    // catches this too, but this workflow does not run it, so catch it here.
+    errors.push(
+      `${GRAMMARS}: package.json declares "${declaredGrammars}", the lockfile was generated from "${lockedRootSpec ?? 'nothing'}". ` +
+        'Run npm install so the lockfile matches package.json.',
+    );
+  } else if (satisfies(lockedVersion, declaredGrammars) === false) {
+    errors.push(
+      `${GRAMMARS}: package.json declares "${declaredGrammars}", but the lockfile installs ${lockedVersion}, which does not satisfy it. ` +
+        'Run npm install to resolve a version that does.',
+    );
+  } else {
+    const latest = await npmLatest(GRAMMARS);
+    const order = compareVersions(lockedVersion, latest);
+    if (order === null) {
+      notes.push(`${GRAMMARS}: installs ${lockedVersion} from the npm registry (latest ${latest ?? 'unknown'}).`);
+    } else if (order < 0) {
+      warnings.push(
+        `${GRAMMARS}: the lockfile installs ${lockedVersion}, but ${latest} is published. ` +
+          'Bump the pin so the editor keeps up with the language.',
+      );
+    } else {
+      notes.push(`${GRAMMARS}: installs ${lockedVersion} from the npm registry, the latest published version.`);
+    }
+  }
 } else if (!grammarsLocked || grammarsLocked.sha !== grammarsPin.sha) {
   errors.push(
     `${GRAMMARS}: package.json pins ${grammarsPin.sha}, the lockfile installs ${grammarsLocked?.sha ?? 'a non-git build'}.`,

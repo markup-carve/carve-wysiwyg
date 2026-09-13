@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1b26" />
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
     <title>Carve WYSIWYG</title>
   </head>
   <body>
@@ -13,22 +15,23 @@
     </header>
 
     <div class="toolbar">
-      <button data-action="bold" title="Bold (*text*)"><b>B</b></button>
-      <button data-action="italic" title="Italic (/text/)"><i>I</i></button>
-      <button data-action="underline" title="Underline (_text_)"><u>U</u></button>
-      <button data-action="strike" title="Strike (~text~)"><s>S</s></button>
-      <button data-action="code" title="Inline code (`code`)">&lt;/&gt;</button>
+      <button data-action="bold" aria-label="Bold" aria-pressed="false" title="Bold (*text*)"><b>B</b></button>
+      <button data-action="italic" aria-label="Italic" aria-pressed="false" title="Italic (/text/)"><i>I</i></button>
+      <button data-action="underline" aria-label="Underline" aria-pressed="false" title="Underline (_text_)"><u>U</u></button>
+      <button data-action="strike" aria-label="Strikethrough" aria-pressed="false" title="Strike (~text~)"><s>S</s></button>
+      <button data-action="code" aria-label="Inline code" aria-pressed="false" title="Inline code (`code`)">&lt;/&gt;</button>
       <button id="open-code-block" title="Insert a fenced code block with a language">▣ Code block</button>
       <span class="sep"></span>
-      <button data-action="h1" title="Heading 1">H1</button>
-      <button data-action="h2" title="Heading 2">H2</button>
+      <button data-action="h1" aria-label="Heading 1" aria-pressed="false" title="Heading 1">H1</button>
+      <button data-action="h2" aria-label="Heading 2" aria-pressed="false" title="Heading 2">H2</button>
       <span class="sep"></span>
-      <button data-action="bulletList" title="Bullet list">&bull; List</button>
-      <button data-action="orderedList" title="Ordered list">. List</button>
-      <button data-action="blockquote" title="Blockquote">&ldquo; Quote</button>
+      <button data-action="bulletList" aria-label="Bullet list" aria-pressed="false" title="Bullet list">&bull; List</button>
+      <button data-action="orderedList" aria-label="Ordered list" aria-pressed="false" title="Ordered list">. List</button>
+      <button data-action="blockquote" aria-label="Blockquote" aria-pressed="false" title="Blockquote">&ldquo; Quote</button>
       <span class="sep"></span>
-      <button data-action="link" title="Link">&#128279; Link</button>
+      <button data-action="link" aria-label="Link" aria-pressed="false" title="Link">&#128279; Link</button>
       <span class="sep"></span>
+      <button id="toggle-comments" class="feature-button comment-toggle" type="button" aria-pressed="true" title="Show or hide editorial comments">◉ Comments</button>
       <button id="open-metadata" class="feature-button" title="Edit document title, language, and other frontmatter">⚙ Document metadata</button>
       <button id="open-insert" class="feature-button" title="Insert a rich Carve structure (Alt+Shift+K)">＋ Insert structure</button>
       <button id="toggle-inspector" class="feature-button" title="Inspect attributes of the selected structure" aria-expanded="false" aria-controls="node-inspector">☷ Inspector</button>

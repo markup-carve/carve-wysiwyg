@@ -33,7 +33,23 @@ describe('rich authoring recipes', () => {
   it('widens a code fence around backticks in its body', () => {
     const recipe = AUTHORING_RECIPES.find(item => item.id === 'code-block')!;
     expect(recipe.source({ language: 'typescript', body: 'const fence = ```;' }))
-      .toMatch(/^```` typescript\n/);
+      .toMatch(/^````typescript\n/);
+  });
+
+  it('emits canonical recipes without an immediate normalization-only diff', () => {
+    for (const recipe of AUTHORING_RECIPES) {
+      const values = Object.fromEntries(recipe.fields.map(field => [field.name, field.value]));
+      const source = recipe.source(values);
+      const normalized = carveToEditorDocument(source);
+      expect(normalized.type, recipe.id).toBe('doc');
+      if (recipe.id === 'code-block' || recipe.id.startsWith('diagram-')) {
+        expect(source, recipe.id).toMatch(/^`{3,}[^ ]/);
+      }
+    }
+    expect(AUTHORING_RECIPES.find(recipe => recipe.id === 'code-group')!.source({ title: 'Examples' }))
+      .not.toMatch(/^`{3,} /m);
+    expect(AUTHORING_RECIPES.find(recipe => recipe.id === 'citation')!.source({ key: 'doe', entry: 'Doe.' }))
+      .not.toContain(': {} ');
   });
 
   it('keeps hostile titles and multiline definition bodies inside their structures', () => {
