@@ -8,6 +8,27 @@
   --accent-fg: #1a1b26;
   --danger: #f7768e;
   --success: #9ece6a;
+  --carve-surface: var(--panel);
+  --carve-sunk: var(--bg);
+  --carve-raised: #292e46;
+  --carve-ink: var(--text);
+  --carve-ink-soft: var(--muted);
+  --carve-ink-inverse: var(--bg);
+  --carve-rule: var(--border);
+  --carve-border: var(--border);
+  --carve-accent: var(--accent);
+  --carve-accent-soft: rgba(122, 162, 247, 0.15);
+  --carve-accent-ink: #bbd2ff;
+  --carve-info: #7dcfff;
+  --carve-info-wash: #1b2b3a;
+  --carve-success: var(--success);
+  --carve-success-wash: #1d3028;
+  --carve-warn: #e0af68;
+  --carve-warn-wash: #332a1d;
+  --carve-danger: var(--danger);
+  --carve-danger-wash: #38212a;
+  --carve-neutral: #a9b1d6;
+  --carve-neutral-wash: #292e42;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -182,6 +203,26 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 
 .preview-pane { overflow-x: auto; }
 .preview-pane :first-child { margin-top: 0; }
+
+/*
+ * Current Carve renderers group every tab radio/label before every panel.
+ * carve-css also supports the older adjacent radio/label/panel shape; these
+ * indexed selectors make its panel switching work for the grouped shape.
+ */
+.preview-pane.carve .tabs > div.tabs-panel {
+  display: none !important;
+}
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(1):checked ~ div.tabs-panel:nth-of-type(1),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(2):checked ~ div.tabs-panel:nth-of-type(2),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(3):checked ~ div.tabs-panel:nth-of-type(3),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(4):checked ~ div.tabs-panel:nth-of-type(4),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(5):checked ~ div.tabs-panel:nth-of-type(5),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(6):checked ~ div.tabs-panel:nth-of-type(6),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(7):checked ~ div.tabs-panel:nth-of-type(7),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(8):checked ~ div.tabs-panel:nth-of-type(8),
+.preview-pane.carve .tabs > input.tabs-radio:nth-of-type(9):checked ~ div.tabs-panel:nth-of-type(9) {
+  display: block !important;
+}
 
 /* Carve-specific editor affordances from CarveKit node views. */
 .carve-div {

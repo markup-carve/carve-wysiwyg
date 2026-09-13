@@ -3,6 +3,12 @@
 A hosted, static WYSIWYG editor for the [Carve](https://markup-carve.github.io/carve/)
 markup language. This fills awesome-djot's "Sandboxes > WYSIWYG" gap for Carve.
 
+## [Open the live Carve WYSIWYG editor →](https://markup-carve.github.io/carve-wysiwyg/)
+
+The live sandbox supports rich structured insertion, visual attribute editing,
+Carve lint feedback, source-normalization diffs, and side-by-side source and
+HTML previews. No installation or account is required.
+
 It is built from the markup-carve org's own assets:
 
 - **carve-grammars** ships the Tiptap kit (`CarveKit`), the AST-based loader
@@ -27,121 +33,27 @@ Three live panes:
 
 The editor also provides a structured-insert palette (`Alt+Shift+K`) for
 tables, references, figures, containers, citations, metadata, and attributes;
-a selection-aware attribute inspector; searchable heading targets; live lint
-findings with source-range navigation; and an explicit source-normalization
-diff. These controls generate Carve through the same AST bridge as imported
-documents, so their output is immediately editable and round-trip tested.
+a collapsible **Document metadata** card for common frontmatter fields and raw
+YAML/TOML; a selection-aware attribute inspector; searchable heading targets;
+live lint findings with source-range navigation; and an explicit
+source-normalization diff. These controls generate Carve through the same AST
+bridge as imported documents, so their output is immediately editable and
+round-trip tested.
 The built-in starter document deliberately exercises frontmatter, an
 admonition, a captioned table, tabs, a cross-reference, and a footnote so the
 hosted sandbox demonstrates these capabilities without setup.
 
-## Develop / build / test
+## Fidelity
 
-```bash
-npm install      # installs the published Carve engine and grammar packages
-npm run dev      # vite dev server
-npm run build    # tsc --noEmit + vite build -> dist/
-npm test         # vitest round-trip suite (happy-dom)
-npm run typecheck
-```
+Rich structures remain editable across Carve → visual editor → Carve round
+trips. Syntax not yet represented visually is retained visibly instead of
+being silently discarded. The source pane and normalization diff make any
+canonical rewrite explicit.
 
-## Dependencies
+See [docs/round-trip.md](docs/round-trip.md) for covered constructs and the
+known delimiter limitation.
 
-`@markup-carve/carve` and `@markup-carve/carve-grammars` are ordinary npm
-dependencies. The grammar is pinned to a single carve-grammars commit on `main`
-rather than to a published version, because the productions this editor needs
-reach `main` before they reach npm - the language attribute (`{:TAG}`) landed
-three days after 0.1.3 published, and 0.1.4 is not on the registry. The pin is
-one reviewable line naming the build the editor runs against, and it moves
-without waiting on a release, the same shape the spec repo uses for its
-carve-js dependency.
+## Development
 
-Only a merged `main` commit belongs in that pin: a branch build silently
-reverts everything that landed after it.
-
-`npm run check:pins` (and `.github/workflows/engine-drift.yml`) enforces that,
-plus three more things nothing watched before - the dependency has to be a
-commit pin at all, the lockfile has to resolve to the commit `package.json`
-names, and the pinned grammar may not be older than the spec revision the
-installed engine was built against. Moving back to a published version range is
-therefore a deliberate edit to `scripts/check-carve-pins.mjs`, not something a
-one-line dependency change can do quietly: a published tarball records no spec
-revision, so nothing about its freshness can be verified.
-
-The old vendored grammar was removed after 0.1.3 published. Its two local
-footnote parse-priority patches landed upstream in carve-grammars #199, so the
-package now provides both the missing functionality and the fixes that
-previously required a downstream fork.
-
-carve-grammars' `CarveKit` imports several Tiptap extensions beyond its declared
-peerDependencies (code-block, highlight, sub/superscript, image, link, table
-family, task family) - those are all listed as direct dependencies here so the
-kit resolves.
-
-## Round trip: what is clean vs lossy
-
-The round trip is Carve -> carve-js AST -> ProseMirror doc ->
-`serializeToCarve` -> Carve. It no longer renders and reparses HTML on import.
-The loader runs with `unsupported: 'preserve'`, so source that has no rich
-Tiptap representation is retained in source-preserving nodes rather than
-silently discarded.
-
-**Round-trips cleanly** (asserted in `tests/roundtrip.test.ts`):
-
-- Headings (`#`, `##`)
-- Inline emphasis: bold `*`, italic `/`, underline `_`, strike `~`
-- Bullet and ordered lists
-- Links and inline code
-- Blockquotes
-- Admonition divs (`::: warning`) and their container class.
-- Footnotes (reference + definition), including their authored labels.
-- Unsupported constructs such as frontmatter through source preservation.
-- Block attributes above a construct the editor models only partly - a
-  `{#fig-x}` over a `:::` fence - through the document's source envelope. Loads
-  go through `setCarveDocument` and saves through `editorToCarve` for that
-  reason: Tiptap's `setContent` replaces the doc's content and leaves the doc
-  node's attributes behind, so the envelope has to be re-attached. See
-  `src/editor.ts`.
-- The language attribute: an imported `{lang="fr"}` span keeps its value on the
-  span mark and serializes back as the `{:fr}` sugar, the `{:fr}` shorthand
-  typed straight into the source pane parses onto that mark, a `<span lang>` in
-  pasted HTML parses onto the same mark, and a value that is not a language tag
-  keeps the `{lang="..."}` spelling. Asserted in
-  `tests/language-attribute.test.ts`.
-- **Composite figures** (`::: figure` with no title and no label, Carve PART 9
-  section 4c): the group is one editable `carveFigureGroup`, its direct figure
-  and table children are the panels in source order, and the `^ ` caption below
-  the closing fence is the group's. Everything else in the body stays where it
-  was written. An opener carrying a quoted title or a `[label]` is a different
-  production and remains the generic container it always was. The mapping is
-  the CarveKit schema in `@markup-carve/carve-grammars`, not this app; both
-  halves of it - an engine that parses the construct and a schema entry that
-  models it - arrived with markup-carve/carve-grammars#225. Asserted in
-  `tests/composite-figure.test.ts`.
-
-**Lossy / normalized (documented, not hidden):**
-
-- **CriticMarkup containing its own closing delimiter** (`+}` / `-}` inside
-  `{+...+}` / `{-...-}`) cannot round-trip - Carve provides no escape for it.
-  This is an upstream serializer limitation noted in carve-grammars.
-
-## Deploy
-
-`.github/workflows/deploy.yml` builds the site and publishes it to GitHub Pages
-(`actions/checkout@v4`, `actions/configure-pages@v5`,
-`actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`). The build sets
-`CARVE_BASE=/<repo>/` so asset paths resolve under the Pages project subpath.
-Enable Pages (Settings -> Pages -> Source: GitHub Actions) and push to `main`.
-
-## Manual browser verification
-
-The automated suite (build + happy-dom round trip) covers the data path:
-import -> ProseMirror doc -> serialize. The following need a real browser and
-should be checked on the deployed page:
-
-- Live editing in the contenteditable surface (typing, selection, caret).
-- Toolbar buttons toggling marks/blocks on a live selection.
-- Node views (the footnote `[^label]` chip, hard-break indicator, div styling).
-- That `onUpdate` refreshes the Carve source and HTML preview on each keystroke.
-- Keyboard and pointer use of the insert dialog and attribute inspector.
-- Navigation from a lint finding to its affected source range.
+Development, dependency-pin, testing, and deployment instructions live in
+[docs/development.md](docs/development.md).

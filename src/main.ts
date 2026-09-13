@@ -7,6 +7,8 @@
  *             import box + "Load Carve" button (Carve -> editor round trip)
  *   - right:  rendered HTML preview (carve-js) of the current Carve source
  */
+import '@markup-carve/carve-grammars/tiptap/editor.css';
+import '@markup-carve/carve-css';
 import './style.css';
 import { Editor } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
@@ -237,6 +239,18 @@ function openInsert(): void {
   recipeSearch.focus();
 }
 
+function openMetadata(): void {
+  const summary = editorEl.querySelector<HTMLButtonElement>('.carve-frontmatter-summary');
+  if (!summary) {
+    openInsert();
+    chooseRecipe('metadata');
+    return;
+  }
+  if (summary.getAttribute('aria-expanded') !== 'true') summary.click();
+  summary.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+$('#open-metadata').addEventListener('click', openMetadata);
 $('#open-insert').addEventListener('click', openInsert);
 $('#recipe-back').addEventListener('click', showRecipeList);
 recipeSearch.addEventListener('input', showRecipeList);
