@@ -429,6 +429,35 @@ figure[data-carve-figure-group] {
 figure[data-carve-figure-group] > figcaption {
   flex-basis: 100%;
 }
+
+.carve-frontmatter-raw-editor {
+  position: relative;
+  min-height: 7rem;
+}
+.carve-frontmatter-raw-editor textarea,
+.carve-frontmatter-highlight {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 7rem;
+  margin: 0;
+  padding: .5rem;
+  overflow: auto;
+  white-space: pre;
+  font: 400 .875rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  tab-size: 2;
+}
+.carve-frontmatter-highlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.carve-frontmatter-raw-editor textarea {
+  position: relative;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+  resize: vertical;
+}
 .carve-figure-panel,
 figure[data-carve-figure-group] > figure[data-carve-figure] {
   flex: 1 1 12rem;
