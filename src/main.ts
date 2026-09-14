@@ -118,6 +118,43 @@ const importEl = $('#carve-import') as HTMLTextAreaElement;
 let editor: Editor;
 let loadedSource = '';
 let selectedRecipeId = '';
+
+function highlightFrontmatter(source: string, format: string): string {
+  const language = format === 'yml' ? 'yaml' : format;
+  if (!hljs.getLanguage(language)) return source
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+  return hljs.highlight(source, { language }).value;
+}
+
+function enhanceFrontmatterEditors(): void {
+  editorEl.querySelectorAll<HTMLTextAreaElement>('.carve-frontmatter-raw textarea').forEach(raw => {
+    let shell = raw.closest<HTMLElement>('.carve-frontmatter-raw-editor');
+    let code = shell?.querySelector<HTMLElement>('code');
+    if (!shell || !code) {
+      shell = document.createElement('div');
+      shell.className = 'carve-frontmatter-raw-editor';
+      const highlighted = document.createElement('pre');
+      highlighted.className = 'carve-frontmatter-highlight hljs';
+      highlighted.setAttribute('aria-hidden', 'true');
+      code = document.createElement('code');
+      highlighted.append(code);
+      raw.before(shell);
+      shell.append(highlighted, raw);
+      raw.addEventListener('input', enhanceFrontmatterEditors);
+      raw.addEventListener('scroll', () => {
+        highlighted.scrollTop = raw.scrollTop;
+        highlighted.scrollLeft = raw.scrollLeft;
+      });
+    }
+    const label = raw.closest('.carve-frontmatter-raw')?.firstChild?.textContent ?? 'Raw YAML';
+    const format = label.replace(/^Raw\s+/i, '').trim().toLowerCase() || 'yaml';
+    code.className = `language-${format}`;
+    const html = highlightFrontmatter(raw.value, format);
+    if (code.innerHTML !== html) code.innerHTML = html;
+  });
+}
 let previewRevision = 0;
 let mermaidLoader: Promise<(typeof import('mermaid'))['default']> | undefined;
 let mermaidTimer: number | undefined;
@@ -169,6 +206,7 @@ function scheduleMermaid(revision: number): void {
 }
 
 function refreshOutputs(carve: string): void {
+  enhanceFrontmatterEditors();
   const revision = ++previewRevision;
   sourceEl.value = carve;
   $('#diff-output').textContent = lineDiff(loadedSource, carve);
@@ -268,6 +306,8 @@ editor = createCarveEditor({
   element: editorEl,
   onUpdate: refreshOutputs,
 });
+new MutationObserver(enhanceFrontmatterEditors).observe(editorEl, { childList: true, subtree: true });
+enhanceFrontmatterEditors();
 
 const commentToggle = $('#toggle-comments') as HTMLButtonElement;
 let commentsVisible = true;
