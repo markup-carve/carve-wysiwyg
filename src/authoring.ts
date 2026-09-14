@@ -45,7 +45,7 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'caption', label: 'Caption', value: 'Table caption' },
       { name: 'id', label: 'ID', value: 'table-1' },
     ],
-    source: v => `{#${safeLabel(v.id, 'table-1')}}\n| Name | Value |\n| :--- | ----: |\n| First | 1 |\n^ ${clean(v.caption, 'Table caption')}\n`,
+    source: v => `{#${safeLabel(v.id, 'table-1')}}\n|=< Name |=> Value |\n| First | 1 |\n^ ${clean(v.caption, 'Table caption')}`,
   },
   {
     id: 'code-block', label: 'Code block', group: 'Structure',
@@ -155,13 +155,13 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'first', label: 'First tab', value: 'First' },
       { name: 'second', label: 'Second tab', value: 'Second' },
     ],
-    source: v => `:::: tabs\n:::: tab [${titleSafe(clean(v.first, 'First'))}]\nFirst panel.\n::::\n:::: tab [${titleSafe(clean(v.second, 'Second'))}]\nSecond panel.\n::::\n::::\n`,
+    source: v => `::: tabs\n:::: tab [${titleSafe(clean(v.first, 'First'))}]\nFirst panel.\n::::\n\n:::: tab [${titleSafe(clean(v.second, 'Second'))}]\nSecond panel.\n::::\n:::`,
   },
   {
     id: 'code-group', label: 'Code group', group: 'Containers',
     description: 'Related, language-labelled code examples.',
     fields: [{ name: 'title', label: 'Title', value: 'Examples' }],
-    source: v => `::: code-group "${titleSafe(clean(v.title, 'Examples'))}"\n\`\`\`javascript\nconsole.log('Hello')\n\`\`\`\n\`\`\`python\nprint('Hello')\n\`\`\`\n:::\n`,
+    source: v => `::: code-group "${titleSafe(clean(v.title, 'Examples'))}"\n\`\`\`javascript\nconsole.log('Hello')\n\`\`\`\n\n\`\`\`python\nprint('Hello')\n\`\`\`\n:::`,
   },
   {
     id: 'citation', label: 'Citation', group: 'References',
@@ -190,7 +190,7 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'class', label: 'Class', value: 'example' },
       { name: 'language', label: 'Language', value: 'en' },
     ],
-    source: v => `{#${safeLabel(v.id, 'section-1')} .${safeLabel(v.class, 'example')} lang=${safeLabel(v.language, 'en')}}\nAttributed paragraph.\n`,
+    source: v => `{#${safeLabel(v.id, 'section-1')} .${safeLabel(v.class, 'example')} :${safeLabel(v.language, 'en')}}\nAttributed paragraph.`,
   },
 ];
 
