@@ -8,6 +8,7 @@
  *   - right:  rendered HTML preview (carve-js) of the current Carve source
  */
 import '@markup-carve/carve-grammars/tiptap/editor.css';
+import '@markup-carve/carve-grammars/diff/carve-diff.css';
 import '@markup-carve/carve-css';
 import 'highlight.js/styles/github-dark.css';
 import 'katex/dist/katex.min.css';
@@ -17,6 +18,7 @@ import type { JSONContent } from '@tiptap/core';
 import hljs from 'highlight.js/lib/common';
 import katex from 'katex';
 import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
+import { applyLanguageDiff } from '@markup-carve/carve-grammars/diff';
 import { lintCarve } from '@markup-carve/carve';
 // CarveKit registers these extensions at runtime from a plain-JS package.
 // Import their declaration augmentations so chained toolbar commands remain
@@ -248,7 +250,16 @@ function refreshOutputs(carve: string): void {
       if (DIAGRAM_LANGUAGES.has(pre.dataset.language ?? '')) return;
       const code = pre.querySelector<HTMLElement>('code[class*="language-"]');
       const requestedLanguage = pre.dataset.language ?? '';
-      if (code && hljs.getLanguage(requestedLanguage)) hljs.highlightElement(code);
+      if (code && pre.classList.contains('diff')) {
+        // A {.diff} language fence: keep the language highlighting and present
+        // the leading +/-/space markers, via the shared carve-grammars helper.
+        const highlightLine = hljs.getLanguage(requestedLanguage)
+          ? (body: string) => hljs.highlight(body, { language: requestedLanguage }).value
+          : undefined;
+        applyLanguageDiff(code, highlightLine);
+      } else if (code && hljs.getLanguage(requestedLanguage)) {
+        hljs.highlightElement(code);
+      }
       const toolbar = document.createElement('span');
       toolbar.className = 'preview-code-toolbar';
       const language = document.createElement('span');
