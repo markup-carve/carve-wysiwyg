@@ -1,0 +1,20 @@
+Intro.
+
+```js
+const a = 1;
+```
+
+{.diff}
+```js "app.js"
+ const a = 1;
+-const b = 2;
++const b = 3;
+```
+
+```carve
+*bold* and /italic/
+```
+
+```crv
+=mark= and _under_
+```

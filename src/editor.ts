@@ -10,6 +10,7 @@
 import { Editor, getSchema } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
 import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
+import { CarveCodeHighlight } from './code-highlight';
 
 export interface CarveEditorOptions {
   element: HTMLElement;
@@ -167,7 +168,7 @@ function withEnvelope(editor: Editor, json: JSONContent): JSONContent {
 export function createCarveEditor(opts: CarveEditorOptions): Editor {
   const editor: Editor = new Editor({
     element: opts.element,
-    extensions: [CarveKit],
+    extensions: [CarveKit, CarveCodeHighlight],
     content: opts.content ?? '',
     onUpdate: ({ editor }) => {
       opts.onUpdate?.(editorToCarve(editor));
