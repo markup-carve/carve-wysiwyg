@@ -65,4 +65,11 @@ describe('code block highlighting on the editor surface', () => {
     const code = editor.view.dom.querySelectorAll('pre code')[1]?.textContent;
     expect(code).toBe(' const a = 1;\n-const b = 2;\n+const b = 3;');
   });
+
+  it('highlights an unmarked {.diff} line from its first column', () => {
+    const editor = mount();
+    setCarveDocument(editor, carveToEditorDocument('{.diff}\n```js\nconst a = 1;\n+let b = 2;\n```'));
+    const first = editor.view.dom.querySelector('pre code span[class*="hljs-keyword"]');
+    expect(first?.textContent).toBe('const');
+  });
 });

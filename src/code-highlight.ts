@@ -64,7 +64,8 @@ function blockDecorations(node: PMNode, start: number, out: Decoration[]): void 
     const marker = line.charAt(0);
     const kind = marker === '+' ? 'hljs-addition' : marker === '-' ? 'hljs-deletion' : null;
     if (kind && line.length) out.push(Decoration.inline(pos, pos + line.length, { class: kind }));
-    if (known && line.length > 1) push(out, pos + 1, tokens(language, line.slice(1)));
+    const skip = kind || marker === ' ' ? 1 : 0;
+    if (known && line.length > skip) push(out, pos + skip, tokens(language, line.slice(skip)));
     pos += line.length + 1;
   }
 }
