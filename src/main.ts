@@ -11,6 +11,7 @@ import '@markup-carve/carve-grammars/tiptap/editor.css';
 import '@markup-carve/carve-grammars/diff/carve-diff.css';
 import '@markup-carve/carve-css';
 import 'highlight.js/styles/github-dark.css';
+import '@markup-carve/carve-grammars/shiki/table-tokens.css';
 import 'katex/dist/katex.min.css';
 import './style.css';
 import { Editor } from '@tiptap/core';

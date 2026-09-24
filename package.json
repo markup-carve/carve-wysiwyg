@@ -15,7 +15,7 @@
   "dependencies": {
     "@markup-carve/carve": "github:markup-carve/carve-js#680af386605367bb86a07c2b258673c6514c4005",
     "@markup-carve/carve-css": "^0.1.1",
-    "@markup-carve/carve-grammars": "github:markup-carve/carve-grammars#98e5985f5b279a3a17cc669d95a2cdf438b60a0c",
+    "@markup-carve/carve-grammars": "github:markup-carve/carve-grammars#b77a4b635063da577dac8290e05730b5bbbf5780",
     "@tiptap/core": "^3.31.3",
     "@tiptap/extension-code-block": "^3.31.3",
     "@tiptap/extension-highlight": "^3.31.3",
