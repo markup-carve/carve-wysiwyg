@@ -30,6 +30,8 @@
   --carve-danger-wash: #38212a;
   --carve-neutral: #a9b1d6;
   --carve-neutral-wash: #292e42;
+  --carve-table-boundary: #79a8b5;
+  --carve-table-operator: #ff7b72;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
