@@ -36,6 +36,9 @@
  * Errors always fail. Warnings report upstream movement and fail only with
  * --drift, which the scheduled reporter uses; a pull request stays green when
  * only upstream moved.
+ *
+ * Exit codes: 0 clean, 1 an error (including the check itself failing), 3 only
+ * with --drift when upstream moved and nothing else is wrong.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -289,4 +292,5 @@ if (!engineLocked) {
 for (const note of notes) console.log(note);
 for (const warning of warnings) console.log(`::warning::${warning}`);
 for (const error of errors) console.log(`::error::${error}`);
-process.exit(errors.length || (drift && warnings.length) ? 1 : 0);
+if (errors.length) process.exit(1);
+process.exit(drift && warnings.length ? 3 : 0);
