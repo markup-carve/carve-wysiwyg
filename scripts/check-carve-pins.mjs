@@ -31,8 +31,11 @@
  *    warning naming the repository that can. Any other engine is one this repo
  *    installed, and pairing it with an older grammar fails.
  *
- * Usage: node scripts/check-carve-pins.mjs [package-dir]
+ * Usage: node scripts/check-carve-pins.mjs [--drift] [package-dir]
  * Reads package.json and package-lock.json from <package-dir> (default: cwd).
+ * Errors always fail. Warnings report upstream movement and fail only with
+ * --drift, which the scheduled reporter uses; a pull request stays green when
+ * only upstream moved.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,7 +44,9 @@ const SPEC_REPO = 'markup-carve/carve';
 const GRAMMARS = '@markup-carve/carve-grammars';
 const ENGINE = '@markup-carve/carve';
 
-const dir = process.argv[2] ?? process.cwd();
+const args = process.argv.slice(2);
+const drift = args.includes('--drift');
+const dir = args.find((arg) => arg !== '--drift') ?? process.cwd();
 const readJson = (name) => JSON.parse(readFileSync(join(dir, name), 'utf8'));
 
 const errors = [];
@@ -284,4 +289,4 @@ if (!engineLocked) {
 for (const note of notes) console.log(note);
 for (const warning of warnings) console.log(`::warning::${warning}`);
 for (const error of errors) console.log(`::error::${error}`);
-process.exit(errors.length ? 1 : 0);
+process.exit(errors.length || (drift && warnings.length) ? 1 : 0);
