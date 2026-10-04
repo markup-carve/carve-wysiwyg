@@ -25,8 +25,10 @@ touch a pin) verify that the dependency is a commit pin, the lockfile resolves
 that commit, the pinned commit belongs to the upstream default branch, and the
 grammar is not older than the spec revision used by the installed engine.
 Upstream moving past the pin is only a warning there.
-`.github/workflows/engine-drift.yml` runs `check:pins -- --drift` daily, which
-also fails on those warnings, and files or closes one tracking issue.
+`.github/workflows/engine-drift.yml` runs `check:pins -- --drift` daily. With
+`--drift` those warnings exit 3, which files or updates one tracking issue and
+leaves the run green; a clean run closes the issue. Any other failure, such as
+an error or an unreachable API, turns the run red.
 Moving back to a published version range requires updating that policy because
 published tarballs do not record a spec revision.
 
