@@ -20,10 +20,13 @@ published. For example, the language attribute (`{:TAG}`) landed after the
 then-current grammar release. A branch commit must not be used: it can silently
 omit work merged after that branch diverged.
 
-`npm run check:pins` and `.github/workflows/engine-drift.yml` verify that the
-dependency is a commit pin, the lockfile resolves that commit, and the pinned
-commit belongs to the upstream default branch, and the grammar is not older
-than the spec revision used by the installed engine.
+`npm run check:pins` and `.github/workflows/pins.yml` (on pull requests that
+touch a pin) verify that the dependency is a commit pin, the lockfile resolves
+that commit, the pinned commit belongs to the upstream default branch, and the
+grammar is not older than the spec revision used by the installed engine.
+Upstream moving past the pin is only a warning there.
+`.github/workflows/engine-drift.yml` runs `check:pins -- --drift` daily, which
+also fails on those warnings, and files or closes one tracking issue.
 Moving back to a published version range requires updating that policy because
 published tarballs do not record a spec revision.
 
