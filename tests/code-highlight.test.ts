@@ -33,6 +33,17 @@ function spans(editor: Editor, index: number): string[] {
   return Array.from(pre?.querySelectorAll('span[class*="hljs-"]') ?? []).map((s) => s.className);
 }
 
+/** The code text the importer put in the nth code block of the document. */
+function codeTextAt(index: number): string {
+  const texts: string[] = [];
+  const walk = (node: { type?: string; content?: { text?: string }[] }) => {
+    if (node.type === 'codeBlock') texts.push(node.content?.[0]?.text ?? '');
+    (node.content ?? []).forEach((child) => walk(child as Parameters<typeof walk>[0]));
+  };
+  walk(carveToEditorDocument(SOURCE) as Parameters<typeof walk>[0]);
+  return texts[index] ?? '';
+}
+
 describe('code block highlighting on the editor surface', () => {
   it('round-trips js, {.diff} js and carve fences byte-identically', () => {
     const editor = mount();
@@ -63,7 +74,11 @@ describe('code block highlighting on the editor surface', () => {
   it('keeps the code text free of injected characters', () => {
     const editor = mount();
     const code = editor.view.dom.querySelectorAll('pre code')[1]?.textContent;
-    expect(code).toBe(' const a = 1;\n-const b = 2;\n+const b = 3;');
+    // Measured against the imported document, not a literal: whether a fence
+    // keeps its final newline is the engine's call, and what this test watches
+    // is only whether the decoration adds or drops characters.
+    expect(code).toBe(codeTextAt(1));
+    expect(code).toContain(' const a = 1;\n-const b = 2;\n+const b = 3;');
   });
 
   it('highlights an unmarked {.diff} line from its first column', () => {
