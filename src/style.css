@@ -475,3 +475,14 @@ figure[data-carve-figure-group] > figcaption {
   font-style: italic;
   color: var(--muted);
 }
+
+/* Keep the editable quote body at document contrast with the reader surface. */
+.ProseMirror blockquote {
+  color: var(--carve-quote-ink, var(--carve-ink));
+  border-inline-start-color: var(--carve-quote-border, color-mix(in srgb, var(--carve-ink) 50%, var(--carve-surface)));
+  padding-block: var(--carve-space-1);
+  padding-inline-start: var(--carve-quote-padding, var(--carve-space-4));
+  border-inline-start-width: var(--carve-quote-border-width, var(--carve-accent-width));
+}
+.ProseMirror blockquote > p { margin-block: 0 var(--carve-quote-gap, var(--carve-space-3)); }
+.ProseMirror blockquote > :last-child { margin-block-end: 0; }
