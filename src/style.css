@@ -88,6 +88,11 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: var(--carve-warn-wash);
   color: #f3c77b;
 }
+.toolbar .toolbar-group { display: inline-flex; gap: 0.2rem; }
+.toolbar button.compact { padding: 0.35rem 0.45rem; min-width: 1.7rem; }
+.toolbar button sup,
+.toolbar button sub { line-height: 0; }
+.toolbar button mark { background: var(--carve-warn-wash); color: inherit; padding: 0 0.15em; }
 .toolbar .sep {
   width: 1px;
   height: 1.4rem;

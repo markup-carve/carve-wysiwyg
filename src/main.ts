@@ -470,7 +470,10 @@ function openCodeBlock(): void {
   chooseRecipe('code-block');
 }
 
-$('#open-code-block').addEventListener('click', openCodeBlock);
+$('#open-code-block').addEventListener('click', () => {
+  if (editor.isActive('codeBlock')) editor.chain().focus().toggleCodeBlock().run();
+  else openCodeBlock();
+});
 $('#open-metadata').addEventListener('click', openMetadata);
 $('#open-insert').addEventListener('click', openInsert);
 $('#recipe-back').addEventListener('click', showRecipeList);
@@ -611,9 +614,18 @@ const toolbarActions: Record<string, () => void> = {
   italic: () => editor.chain().focus().toggleItalic().run(),
   underline: () => editor.chain().focus().toggleUnderline().run(),
   strike: () => editor.chain().focus().toggleStrike().run(),
+  highlight: () => editor.chain().focus().toggleMark('highlight').run(),
+  superscript: () => editor.chain().focus().toggleMark('superscript').run(),
+  subscript: () => editor.chain().focus().toggleMark('subscript').run(),
+  insert: () => editor.chain().focus().toggleMark('carveInsert').run(),
+  delete: () => editor.chain().focus().toggleMark('carveDelete').run(),
   code: () => editor.chain().focus().toggleCode().run(),
   h1: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
   h2: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+  h3: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+  h4: () => editor.chain().focus().toggleHeading({ level: 4 }).run(),
+  h5: () => editor.chain().focus().toggleHeading({ level: 5 }).run(),
+  h6: () => editor.chain().focus().toggleHeading({ level: 6 }).run(),
   bulletList: () => editor.chain().focus().toggleBulletList().run(),
   orderedList: () => toggleOrderedList(editor),
   taskList: () => editor.chain().focus().toggleTaskList().run(),
@@ -633,9 +645,18 @@ const toolbarActive: Record<string, () => boolean> = {
   italic: () => editor.isActive('italic'),
   underline: () => editor.isActive('underline'),
   strike: () => editor.isActive('strike'),
+  highlight: () => editor.isActive('highlight'),
+  superscript: () => editor.isActive('superscript'),
+  subscript: () => editor.isActive('subscript'),
+  insert: () => editor.isActive('carveInsert'),
+  delete: () => editor.isActive('carveDelete'),
   code: () => editor.isActive('code'),
   h1: () => editor.isActive('heading', { level: 1 }),
   h2: () => editor.isActive('heading', { level: 2 }),
+  h3: () => editor.isActive('heading', { level: 3 }),
+  h4: () => editor.isActive('heading', { level: 4 }),
+  h5: () => editor.isActive('heading', { level: 5 }),
+  h6: () => editor.isActive('heading', { level: 6 }),
   bulletList: () => editor.isActive('bulletList'),
   orderedList: () => editor.isActive('orderedList'),
   taskList: () => editor.isActive('taskList'),
@@ -643,11 +664,22 @@ const toolbarActive: Record<string, () => boolean> = {
   link: () => editor.isActive('link'),
 };
 
+const codeBlockButton = $('#open-code-block') as HTMLButtonElement;
+
 function updateToolbarState(): void {
   document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => {
     button.setAttribute('aria-pressed', String(toolbarActive[button.dataset.action!]?.() ?? false));
   });
+  codeBlockButton.setAttribute('aria-pressed', String(editor.isActive('codeBlock')));
 }
+
+const toolbarCommands: Record<string, () => void> = {
+  horizontalRule: () => editor.chain().focus().setHorizontalRule().run(),
+  hardBreak: () => editor.chain().focus().setHardBreak().run(),
+};
+document.querySelectorAll<HTMLButtonElement>('[data-command]').forEach(btn => {
+  btn.addEventListener('click', () => toolbarCommands[btn.dataset.command!]?.());
+});
 
 document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((btn) => {
   btn.addEventListener('click', () => {
