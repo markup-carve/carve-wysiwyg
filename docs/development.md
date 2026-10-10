@@ -13,17 +13,23 @@ npm run check:pins
 
 ## Dependency pins
 
-`@markup-carve/carve` and `@markup-carve/carve-grammars` are ordinary npm
-dependencies. The grammar is pinned to a merged `carve-grammars/main` commit
-because editor productions can reach `main` before a matching package is
-published. For example, the language attribute (`{:TAG}`) landed after the
-then-current grammar release. A branch commit must not be used: it can silently
-omit work merged after that branch diverged.
+Both Carve packages are git commit pins in `package.json`, not npm version
+ranges: `@markup-carve/carve` points at a `carve-js` commit and
+`@markup-carve/carve-grammars` at a `carve-grammars` commit. Each pin is a
+merged commit on that repository's `main`, because editor and engine
+productions can reach `main` before a matching package is published. For
+example, the language attribute (`{:TAG}`) landed after the then-current grammar
+release. A branch commit must not be used: it can silently omit work merged
+after that branch diverged.
+
+The `overrides` entry in `package.json` makes carve-grammars use the same
+carve-js build as the app, so the engine pin decides both the preview and the
+parser behind the editor's loader.
 
 `npm run check:pins` and `.github/workflows/pins.yml` (on pull requests that
-touch a pin) verify that the dependency is a commit pin, the lockfile resolves
-that commit, the pinned commit belongs to the upstream default branch, and the
-grammar is not older than the spec revision used by the installed engine.
+touch a pin) verify that the lockfile resolves each pinned commit, the pinned
+commit belongs to the upstream default branch, and the grammar is not older
+than the spec revision used by the installed engine.
 Upstream moving past the pin is only a warning there.
 `.github/workflows/engine-drift.yml` runs `check:pins -- --drift` daily. With
 `--drift` those warnings exit 3, which files or updates one tracking issue and
