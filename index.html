@@ -15,22 +15,35 @@
     </header>
 
     <div class="toolbar">
-      <button data-action="bold" aria-label="Bold" aria-pressed="false" title="Bold (*text*)"><b>B</b></button>
-      <button data-action="italic" aria-label="Italic" aria-pressed="false" title="Italic (/text/)"><i>I</i></button>
-      <button data-action="underline" aria-label="Underline" aria-pressed="false" title="Underline (_text_)"><u>U</u></button>
-      <button data-action="strike" aria-label="Strikethrough" aria-pressed="false" title="Strike (~text~)"><s>S</s></button>
-      <button data-action="code" aria-label="Inline code" aria-pressed="false" title="Inline code (`code`)">&lt;/&gt;</button>
-      <button id="open-code-block" title="Insert a fenced code block with a language">▣ Code block</button>
+      <button data-action="bold" aria-label="Bold" aria-pressed="false" title="Bold (*text*, Ctrl/Cmd+B)"><b>B</b></button>
+      <button data-action="italic" aria-label="Italic" aria-pressed="false" title="Italic (/text/, Ctrl/Cmd+I)"><i>I</i></button>
+      <button data-action="underline" aria-label="Underline" aria-pressed="false" title="Underline (_text_, Ctrl/Cmd+U)"><u>U</u></button>
+      <button data-action="strike" aria-label="Strikethrough" aria-pressed="false" title="Strike (~text~, Ctrl/Cmd+Shift+S)"><s>S</s></button>
+      <button data-action="highlight" aria-label="Highlight" aria-pressed="false" title="Highlight (=text=, Ctrl/Cmd+Shift+H)"><mark>H</mark></button>
+      <button data-action="superscript" aria-label="Superscript" aria-pressed="false" title="Superscript ({^text^}, Ctrl/Cmd+.)">x<sup>2</sup></button>
+      <button data-action="subscript" aria-label="Subscript" aria-pressed="false" title="Subscript ({,text,}, Ctrl/Cmd+,)">x<sub>2</sub></button>
+      <button data-action="insert" aria-label="Inserted text" aria-pressed="false" title="Inserted text ({+text+}, Ctrl/Cmd+Shift+I)"><ins>ins</ins></button>
+      <button data-action="delete" aria-label="Deleted text" aria-pressed="false" title="Deleted text ({-text-}, Ctrl/Cmd+Shift+D)"><del>del</del></button>
+      <button data-action="code" aria-label="Inline code" aria-pressed="false" title="Inline code (`code`, Ctrl/Cmd+E)">&lt;/&gt;</button>
+      <button id="open-code-block" aria-label="Code block" aria-pressed="false" title="Code block: insert one with a language, or turn the current one back into a paragraph (Ctrl/Cmd+Shift+E)">▣ Code block</button>
       <span class="sep"></span>
-      <button data-action="h1" aria-label="Heading 1" aria-pressed="false" title="Heading 1">H1</button>
-      <button data-action="h2" aria-label="Heading 2" aria-pressed="false" title="Heading 2">H2</button>
+      <span class="toolbar-group" role="group" aria-label="Headings">
+        <button data-action="h1" aria-label="Heading 1" aria-pressed="false" title="Heading 1 (Ctrl/Cmd+1)">H1</button>
+        <button data-action="h2" aria-label="Heading 2" aria-pressed="false" title="Heading 2 (Ctrl/Cmd+2)">H2</button>
+        <button data-action="h3" class="compact" aria-label="Heading 3" aria-pressed="false" title="Heading 3 (Ctrl/Cmd+3)">H3</button>
+        <button data-action="h4" class="compact" aria-label="Heading 4" aria-pressed="false" title="Heading 4 (Ctrl/Cmd+4)">H4</button>
+        <button data-action="h5" class="compact" aria-label="Heading 5" aria-pressed="false" title="Heading 5 (Ctrl/Cmd+5)">H5</button>
+        <button data-action="h6" class="compact" aria-label="Heading 6" aria-pressed="false" title="Heading 6 (Ctrl/Cmd+6)">H6</button>
+      </span>
       <span class="sep"></span>
-      <button data-action="bulletList" aria-label="Bullet list" aria-pressed="false" title="Bullet list">&bull; List</button>
-      <button data-action="orderedList" aria-label="Ordered list" aria-pressed="false" title="Ordered list">. List</button>
+      <button data-action="bulletList" aria-label="Bullet list" aria-pressed="false" title="Bullet list (Ctrl/Cmd+Shift+8)">&bull; List</button>
+      <button data-action="orderedList" aria-label="Ordered list" aria-pressed="false" title="Ordered list (Ctrl/Cmd+Shift+7)">. List</button>
       <button data-action="taskList" aria-label="Task list" aria-pressed="false" title="Task list (- [ ] item, Ctrl/Cmd+Shift+9)">&#9745; Tasks</button>
-      <button data-action="blockquote" aria-label="Blockquote" aria-pressed="false" title="Blockquote">&ldquo; Quote</button>
+      <button data-action="blockquote" aria-label="Blockquote" aria-pressed="false" title="Blockquote (Ctrl/Cmd+Shift+B)">&ldquo; Quote</button>
+      <button data-command="horizontalRule" aria-label="Horizontal rule" title="Horizontal rule (--- on its own line)">&mdash;</button>
+      <button data-command="hardBreak" aria-label="Hard break" title="Hard break (Shift+Enter)">&crarr;</button>
       <span class="sep"></span>
-      <button data-action="link" aria-label="Link" aria-pressed="false" title="Link">&#128279; Link</button>
+      <button data-action="link" aria-label="Link" aria-pressed="false" title="Link (Ctrl/Cmd+Shift+K)">&#128279; Link</button>
       <span class="sep"></span>
       <button id="toggle-comments" class="feature-button comment-toggle" type="button" aria-pressed="true" title="Show or hide editorial comments">◉ Comments</button>
       <button id="open-metadata" class="feature-button" title="Edit document title, language, and other frontmatter">⚙ Document metadata</button>

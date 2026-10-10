@@ -23,11 +23,13 @@ It is built from the markup-carve org's own assets:
 Three live panes:
 
 1. **Editor** - a Tiptap editor initialized with `CarveKit`, plus a toolbar
-   (bold, italic, underline, strike, inline code, code block, H1/H2,
-   bullet/ordered/task list, blockquote, link) wired to Tiptap commands using
-   Carve's visual semantics. The toolbar's right side holds the **Comments**
-   show/hide toggle, **Document metadata**, **Insert structure**, and
-   **Inspector**.
+   (bold, italic, underline, strike, highlight, superscript, subscript,
+   inserted and deleted text, inline code, code block, headings 1-6,
+   bullet/ordered/task list, blockquote, horizontal rule, hard break, link)
+   wired to Tiptap commands using Carve's visual semantics. Each button's
+   tooltip shows its Carve syntax and keyboard shortcut. The toolbar's right
+   side holds the **Comments** show/hide toggle, **Document metadata**,
+   **Insert structure**, and **Inspector**.
 2. **Carve source** - read-only, regenerated on every edit by running
    `serializeToCarve` on the editor's ProseMirror document; plus an import box
    and a "Load Carve" button (Carve -> editor round trip).
