@@ -13,6 +13,8 @@ describe('rich authoring recipes', () => {
       'diagram-mermaid', 'diagram-graphviz', 'diagram-d2', 'diagram-plantuml',
       'diagram-wavedrom', 'diagram-abc', 'diagram-vega-lite', 'diagram-chart',
       'math-inline', 'math-display',
+      'definition-list', 'line-block', 'comment', 'block-comment', 'inline-footnote',
+      'span', 'div', 'danger', 'info', 'success', 'example', 'quote', 'task-state',
     ]));
 
     for (const recipe of AUTHORING_RECIPES) {

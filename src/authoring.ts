@@ -1,3 +1,5 @@
+import { escapeCarve } from '@markup-carve/carve-grammars/tiptap';
+
 export interface AuthoringField {
   name: string;
   label: string;
@@ -24,6 +26,22 @@ const fenced = (kind: string, title: string, body: string): string => {
   const fence = ':'.repeat(Math.max(3, longest + 1));
   return `${fence} ${kind} "${titleSafe(title)}"\n${body}\n${fence}\n`;
 };
+const oneLine = (value: string): string => value.replace(/\s*\n\s*/g, ' ');
+const colonFenced = (opener: string, body: string): string => {
+  const longest = Math.max(0, ...[...body.matchAll(/:+/g)].map(match => match[0].length));
+  const fence = ':'.repeat(Math.max(3, longest + 1));
+  return `${fence} ${opener}`.trimEnd() + `\n${body}\n${fence}\n`;
+};
+const commentFenced = (body: string): string => {
+  const longest = Math.max(0, ...[...body.matchAll(/^[ \t]*(%+)/gm)].map(match => match[1].length));
+  const fence = '%'.repeat(Math.max(3, longest + 1));
+  return `${fence}\n${body}\n${fence}\n`;
+};
+/** The extended task states and what each one means. */
+export const TASK_STATES: Array<[state: string, meaning: string]> = [
+  ['-', 'dropped'], ['_', 'paused'], ['>', 'deferred'], ['?', 'maybe'],
+];
+const ADMONITIONS = ['note', 'tip', 'warning', 'danger', 'info', 'success', 'example', 'quote'];
 const codeFenced = (language: string, body: string): string => {
   const longest = Math.max(0, ...[...body.matchAll(/`+/g)].map(match => match[0].length));
   const fence = '`'.repeat(Math.max(3, longest + 1));
@@ -95,6 +113,12 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
     source: v => `Footnote[^${safeLabel(v.label, 'note')}].\n\n[^${safeLabel(v.label, 'note')}]: ${continuation(clean(v.body, 'Footnote text.'))}\n`,
   },
   {
+    id: 'inline-footnote', label: 'Inline footnote', group: 'References',
+    description: 'A footnote written where it is referenced, with no separate definition.',
+    fields: [{ name: 'body', label: 'Footnote text', value: 'An inline note.', required: true }],
+    source: v => `Text^[${escapeCarve(oneLine(clean(v.body, 'An inline note.')))}].\n`,
+  },
+  {
     id: 'crossref', label: 'Cross-reference', group: 'References',
     description: 'A reference to a document ID.',
     fields: [{ name: 'target', label: 'Target ID', value: 'figure-1', required: true }],
@@ -139,15 +163,33 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
     ],
     source: v => `{#${safeLabel(v.id, 'figures-1')}}\n::: figure\n{#panel-a}\n![First panel](https://example.com/one.png)\n^ (a) First panel\n\n{#panel-b}\n![Second panel](https://example.com/two.png)\n^ (b) Second panel\n:::\n^ ${clean(v.caption, 'Figure group')}\n`,
   },
-  ...['note', 'tip', 'warning', 'details', 'spoiler'].map((kind): AuthoringRecipe => ({
+  ...[...ADMONITIONS, 'details', 'spoiler'].map((kind): AuthoringRecipe => ({
     id: kind, label: kind[0].toUpperCase() + kind.slice(1), group: 'Containers',
-    description: `${kind === 'note' ? 'Admonition' : kind} container with a title and body.`,
+    description: ADMONITIONS.includes(kind)
+      ? `${kind[0].toUpperCase() + kind.slice(1)} admonition with a title and body.`
+      : `${kind[0].toUpperCase() + kind.slice(1)} container with a title and body.`,
     fields: [
       { name: 'title', label: 'Title', value: kind[0].toUpperCase() + kind.slice(1) },
       { name: 'body', label: 'Body', value: 'Write content here.' },
     ],
     source: v => fenced(kind, clean(v.title, kind), clean(v.body, 'Write content here.')),
   })),
+  {
+    id: 'div', label: 'Generic div', group: 'Containers',
+    description: 'A plain container with a class, for styling or host hooks.',
+    fields: [
+      { name: 'class', label: 'Class', value: 'sidebar', required: true },
+      { name: 'body', label: 'Body', value: 'Write content here.' },
+    ],
+    source: v => colonFenced(safeLabel(v.class, 'sidebar'), clean(v.body, 'Write content here.')),
+  },
+  {
+    id: 'line-block', label: 'Line block', group: 'Containers',
+    description: 'Keeps every line break and leading space, for verse or addresses.',
+    fields: [{ name: 'body', label: 'Lines', value: 'Roses are red,\n  violets are blue.' }],
+    // Leading spaces are content here, so only blank edge lines are dropped.
+    source: v => colonFenced('|', v.body.replace(/^(?:[ \t]*\n)+|\s+$/g, '') || 'First line'),
+  },
   {
     id: 'tabs', label: 'Tabs', group: 'Containers',
     description: 'Keyboard-friendly tab set with two editable panels.',
@@ -171,6 +213,55 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'entry', label: 'Bibliography entry', value: 'Doe, J. (2026). Example.' },
     ],
     source: v => `Evidence [@${safeLabel(v.key, 'doe2026')}].\n\n[@${safeLabel(v.key, 'doe2026')}]: ${continuation(clean(v.entry, 'Doe, J. (2026). Example.'))}\n`,
+  },
+  {
+    id: 'definition-list', label: 'Definition list', group: 'Structure',
+    description: 'A term followed by its definition.',
+    fields: [
+      { name: 'term', label: 'Term', value: 'Term', required: true },
+      { name: 'definition', label: 'Definition', value: 'Definition of the term.' },
+    ],
+    source: v => `:: ${escapeCarve(oneLine(clean(v.term, 'Term')))}\n: ${escapeCarve(oneLine(clean(v.definition, 'Definition of the term.')))}\n`,
+  },
+  {
+    id: 'task-state', label: 'Task with a state', group: 'Structure',
+    description: 'A task item that is dropped (-), paused (_), deferred (>) or maybe (?).',
+    fields: [
+      { name: 'state', label: 'State (- _ > ?)', value: '?', required: true },
+      { name: 'task', label: 'Task', value: 'Decide later' },
+    ],
+    source: v => {
+      const state = TASK_STATES.find(([mark]) => mark === v.state.trim())?.[0] ?? '?';
+      return `- [${state}] ${escapeCarve(oneLine(clean(v.task, 'Decide later')))}\n`;
+    },
+  },
+  {
+    id: 'comment', label: 'Comment', group: 'Document',
+    description: 'A one-line %% comment that never renders.',
+    fields: [{ name: 'body', label: 'Comment', value: 'Check this before publishing.', required: true }],
+    source: v => `%% ${oneLine(clean(v.body, 'Check this before publishing.'))}\n`,
+  },
+  {
+    id: 'block-comment', label: 'Block comment', group: 'Document',
+    description: 'A fenced %%% comment that can span several lines.',
+    fields: [{ name: 'body', label: 'Comment', value: 'Review notes\nfor this section.', required: true }],
+    source: v => commentFenced(clean(v.body, 'Review notes')),
+  },
+  {
+    id: 'span', label: 'Span with attributes', group: 'Document',
+    description: 'Inline text carrying an ID and a class.',
+    fields: [
+      { name: 'text', label: 'Text', value: 'styled text', required: true },
+      { name: 'id', label: 'ID', value: '' },
+      { name: 'class', label: 'Class', value: 'highlight' },
+    ],
+    source: v => {
+      const attrs = [
+        v.id.trim() ? `#${safeLabel(v.id, 'span-1')}` : '',
+        v.class.trim() ? `.${safeLabel(v.class, 'highlight')}` : '',
+      ].filter(Boolean);
+      return `[${escapeCarve(oneLine(clean(v.text, 'styled text')))}]{${attrs.length ? attrs.join(' ') : '.highlight'}}\n`;
+    },
   },
   {
     id: 'metadata', label: 'Document metadata', group: 'Document',
