@@ -616,6 +616,7 @@ const toolbarActions: Record<string, () => void> = {
   h2: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
   bulletList: () => editor.chain().focus().toggleBulletList().run(),
   orderedList: () => toggleOrderedList(editor),
+  taskList: () => editor.chain().focus().toggleTaskList().run(),
   blockquote: () => editor.chain().focus().toggleBlockquote().run(),
   link: () => {
     const url = window.prompt('Link URL:');
@@ -637,6 +638,7 @@ const toolbarActive: Record<string, () => boolean> = {
   h2: () => editor.isActive('heading', { level: 2 }),
   bulletList: () => editor.isActive('bulletList'),
   orderedList: () => editor.isActive('orderedList'),
+  taskList: () => editor.isActive('taskList'),
   blockquote: () => editor.isActive('blockquote'),
   link: () => editor.isActive('link'),
 };

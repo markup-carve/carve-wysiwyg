@@ -123,6 +123,15 @@ describe('ordered-list authoring default', () => {
   });
 });
 
+describe('task-list authoring', () => {
+  it('turns paragraphs into unchecked task items', () => {
+    editor.commands.setContent('<p>alpha</p><p>beta</p>');
+    editor.commands.selectAll();
+    editor.commands.toggleTaskList();
+    expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta');
+  });
+});
+
 /**
  * The source envelope, which is what carries a block-attribute line above a
  * construct the rich model does not fully hold. It is honored only while the
