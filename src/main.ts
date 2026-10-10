@@ -16,6 +16,7 @@ import 'katex/dist/katex.min.css';
 import './style.css';
 import { Editor } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import hljs from 'highlight.js/lib/common';
 import katex from 'katex';
 import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
@@ -430,9 +431,10 @@ function showRecipeList(): void {
   recipeList.replaceChildren();
   const query = recipeSearch.value.toLowerCase();
   let group = '';
+  const groupOrder = [...new Set(AUTHORING_RECIPES.map(recipe => recipe.group))];
   AUTHORING_RECIPES.filter(recipe =>
     `${recipe.label} ${recipe.group} ${recipe.description}`.toLowerCase().includes(query),
-  ).forEach(recipe => {
+  ).sort((a, b) => groupOrder.indexOf(a.group) - groupOrder.indexOf(b.group)).forEach(recipe => {
     if (recipe.group !== group) {
       group = recipe.group;
       const heading = document.createElement('h3');
@@ -519,7 +521,41 @@ const inspector = $('#node-inspector');
 const inspectorFields = $('#inspector-fields');
 let inspectedType = '';
 
+const taskControl = $('#inspector-task');
+const taskStateSelect = $('#task-state') as HTMLSelectElement;
+
+/** The task item holding the selection, with its document position. */
+function selectedTaskItem(): { pos: number; node: ProseMirrorNode } | null {
+  const { $from } = editor.state.selection;
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === 'taskItem') return { pos: $from.before(depth), node };
+  }
+  return null;
+}
+
+function syncTaskState(): void {
+  const task = selectedTaskItem();
+  taskControl.hidden = !task;
+  if (task) taskStateSelect.value = task.node.attrs.checked ? 'x' : (task.node.attrs.carveTaskState ?? ' ');
+}
+
+taskStateSelect.addEventListener('change', () => {
+  const task = selectedTaskItem();
+  if (!task) return;
+  const state = taskStateSelect.value;
+  editor.chain().focus().command(({ tr }) => {
+    tr.setNodeMarkup(task.pos, undefined, {
+      ...task.node.attrs,
+      checked: state === 'x',
+      carveTaskState: state === 'x' || state === ' ' ? null : state,
+    });
+    return true;
+  }).run();
+});
+
 function inspectSelection(): void {
+  syncTaskState();
   const { $from } = editor.state.selection;
   let node = $from.parent;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
@@ -530,8 +566,8 @@ function inspectSelection(): void {
   inspectorFields.replaceChildren();
   $('#inspector-help').textContent = `Editing ${inspectedType}. Empty values remove optional attributes.`;
   const entries = Object.entries(node.attrs).filter(([name, value]) =>
-    !['carveSource', 'carveFingerprint', 'carveSourceLayout'].includes(name)
-      && !['carveAttrOrder', 'carveKeyValues', 'items'].includes(name)
+    !['carveSource', 'carveFingerprint', 'carveSourceLayout', 'carveProjectedSource'].includes(name)
+      && !['carveAttrOrder', 'carveKeyValues', 'items', 'carveTaskState'].includes(name)
       && (value == null || ['string', 'number', 'boolean'].includes(typeof value)),
   );
   if (!entries.length) {
@@ -607,6 +643,7 @@ inspector.addEventListener('keydown', event => {
   }
 });
 editor.on('selectionUpdate', () => { if (!inspector.hidden) inspectSelection(); });
+editor.on('update', () => { if (!inspector.hidden) syncTaskState(); });
 
 // Toolbar wiring -----------------------------------------------------------
 const toolbarActions: Record<string, () => void> = {

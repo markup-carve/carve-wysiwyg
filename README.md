@@ -37,9 +37,12 @@ Three live panes:
    carve-js.
 
 The editor also provides a structured-insert palette (`Alt+Shift+K`) for
-tables, references, figures, containers, citations, metadata, and attributes;
+tables, definition lists, references and inline footnotes, figures, containers
+and admonitions, line blocks, comments, citations, metadata, attributed blocks
+and spans, and task items with an extended state;
 a collapsible **Document metadata** card for common frontmatter fields and raw
-YAML/TOML; a selection-aware attribute inspector; searchable heading targets;
+YAML/TOML; a selection-aware attribute inspector, which also sets a task item's state
+(`[ ]`, `[x]`, `[-]`, `[_]`, `[>]`, `[?]`); searchable heading targets;
 live lint findings with source-range navigation; and an explicit
 source-normalization diff. These controls generate Carve through the same AST
 bridge as imported documents, so their output is immediately editable and

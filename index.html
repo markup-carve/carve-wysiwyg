@@ -58,6 +58,16 @@
         <aside id="node-inspector" class="inspector" aria-label="Selection inspector" hidden>
           <div class="section-heading"><h2>Selection inspector</h2><button id="close-inspector" aria-label="Close inspector">×</button></div>
           <p id="inspector-help" class="muted">Select a structured node to edit its attributes.</p>
+          <label id="inspector-task" class="inspector-task" hidden>Task state
+            <select id="task-state">
+              <option value=" ">Open [ ]</option>
+              <option value="x">Done [x]</option>
+              <option value="-">Dropped [-]</option>
+              <option value="_">Paused [_]</option>
+              <option value="&gt;">Deferred [&gt;]</option>
+              <option value="?">Maybe [?]</option>
+            </select>
+          </label>
           <form id="inspector-fields"></form>
         </aside>
       </section>
