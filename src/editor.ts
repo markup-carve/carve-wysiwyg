@@ -19,7 +19,9 @@ export interface CarveEditorOptions {
 }
 
 /** The document-level attribute names CarveKit's source envelope uses. */
-const ENVELOPE_ATTRS = ['carveSource', 'carveFingerprint', 'carveSourceLayout'] as const;
+const ENVELOPE_ATTRS = [
+  'carveSource', 'carveFingerprint', 'carveSourceLayout', 'carveProjectedSource',
+] as const;
 
 type Envelope = Record<string, unknown>;
 
@@ -54,8 +56,8 @@ type Envelope = Record<string, unknown>;
  *
  * A WeakMap rather than a field on the editor so nothing is retained after an
  * editor is destroyed. Re-attaching is safe without any staleness check of its
- * own: the fingerprint is that check, and the serializer falls through to
- * ordinary serialization the moment the document is edited.
+ * own: the fingerprint is that check, and once the document is edited the
+ * serializer merges the edit into the authored source instead.
  */
 const loaded = new WeakMap<Editor, { doc: JSONContent; envelope: Envelope }>();
 
@@ -148,21 +150,25 @@ function stable(value: unknown): string {
 
 /**
  * What to serialize: the document as loaded when the editor still holds it, and
- * the editor's own JSON once it has been edited.
+ * the editor's own JSON carrying the loaded envelope once it has been edited.
  *
- * Handing the serializer the ORIGINAL document rather than a reconstruction of
- * it is what makes the envelope usable. Its fingerprint was taken over that
- * exact JSON, and the envelope is only honored while the fingerprint matches -
- * so anything less than the original is a guess at what the fingerprint will
- * accept. After an edit there is nothing to preserve: the editor's document IS
- * the document, and ordinary serialization is correct.
+ * Handing the serializer the ORIGINAL document while it is unedited is what
+ * makes the fingerprint match: it was taken over that exact JSON, and the mounted
+ * document differs from it by the schema defaults Tiptap fills in.
+ *
+ * After an edit the envelope still matters. Its `carveProjectedSource` is the
+ * canonical serialization of the loaded document, so the serializer can diff the
+ * edited document's serialization against it and apply only that difference to
+ * the authored source. Dropping the envelope instead respells every construct
+ * in the document on the first keystroke.
  */
 function withEnvelope(editor: Editor, json: JSONContent): JSONContent {
   const entry = loaded.get(editor);
   if (!entry) return json;
   const unedited = stable(authored(json.content ?? []))
     === stable(authored(entry.doc.content ?? []));
-  return unedited ? entry.doc : json;
+  if (unedited) return entry.doc;
+  return { ...json, attrs: { ...(json.attrs ?? {}), ...entry.envelope } };
 }
 
 export function createCarveEditor(opts: CarveEditorOptions): Editor {

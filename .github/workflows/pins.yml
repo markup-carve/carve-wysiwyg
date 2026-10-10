@@ -35,8 +35,8 @@ jobs:
         with:
           node-version: 22
 
-      # Fails on what this repo controls: lockfile agreement, a merged grammar
-      # commit, grammar and engine spec revisions. Upstream moving ahead is only
+      # Fails on what this repo controls: lockfile agreement, merged grammar and
+      # engine commits, grammar and engine spec revisions. Upstream moving ahead is only
       # a warning here; engine-drift.yml files that as a ticket.
       - name: Check the Carve dependency pins
         if: steps.changed.outputs.run == 'true'
