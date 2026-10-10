@@ -16,7 +16,10 @@
  *    moving still surfaces. A published tarball records no spec revision, so
  *    the grammar-versus-engine freshness comparison in (3) cannot run for it -
  *    the npm-latest check is its stand-in.
- * B. A `github:owner/repo#sha` commit pin, checked as before:
+ * B. A `github:owner/repo#sha` commit pin, checked as below.
+ *
+ * Checks 1 and 2 also run for the carve-js commit pin, so both pins report
+ * "main is N commits ahead" drift:
  *
  * 1. The pin must match the lockfile's resolved commit.
  * 2. That commit must be on the repository's default branch. Pinning an
@@ -158,6 +161,31 @@ async function compare(repo, base, head) {
   return api(`/repos/${repo}/compare/${base}...${head}`);
 }
 
+/**
+ * Checks for a `github:owner/repo#sha` pin: the lockfile installs the pinned
+ * commit, the commit is on the default branch, and how far that branch has
+ * moved past it.
+ */
+async function checkGitPin(name, pin, locked) {
+  if (!locked || locked.sha !== pin.sha) {
+    errors.push(`${name}: package.json pins ${pin.sha}, the lockfile installs ${locked?.sha ?? 'a non-git build'}.`);
+    return;
+  }
+  const { default_branch: branch } = await api(`/repos/${pin.repo}`);
+  const range = await compare(pin.repo, pin.sha, branch);
+  if (range.status === 'diverged' || range.behind_by > 0) {
+    errors.push(
+      `${name}: ${pin.sha.slice(0, 12)} is not on ${pin.repo}'s ${branch} ` +
+        `(status ${range.status}, ${range.behind_by} commit(s) that ${branch} does not have). ` +
+        'Pin a merged commit; a branch build reverts whatever landed after it.',
+    );
+  } else if (range.ahead_by > 0) {
+    warnings.push(`${name}: ${branch} is ${range.ahead_by} commit(s) ahead of the pin ${pin.sha.slice(0, 12)}.`);
+  } else {
+    notes.push(`${name}: pinned at ${branch} head ${pin.sha.slice(0, 12)}.`);
+  }
+}
+
 const pkg = readJson('package.json');
 const lock = readJson('package-lock.json');
 
@@ -208,27 +236,16 @@ if (!grammarsPin) {
       notes.push(`${GRAMMARS}: installs ${lockedVersion} from the npm registry, the latest published version.`);
     }
   }
-} else if (!grammarsLocked || grammarsLocked.sha !== grammarsPin.sha) {
-  errors.push(
-    `${GRAMMARS}: package.json pins ${grammarsPin.sha}, the lockfile installs ${grammarsLocked?.sha ?? 'a non-git build'}.`,
-  );
 } else {
-  const repo = grammarsPin.repo;
-  const { default_branch: branch } = await api(`/repos/${repo}`);
-  const range = await compare(repo, grammarsPin.sha, branch);
-  if (range.status === 'diverged' || range.behind_by > 0) {
-    errors.push(
-      `${GRAMMARS}: ${grammarsPin.sha.slice(0, 12)} is not on ${repo}'s ${branch} ` +
-        `(status ${range.status}, ${range.behind_by} commit(s) that ${branch} does not have). ` +
-        'Pin a merged commit; a branch build reverts whatever landed after it.',
-    );
-  } else if (range.ahead_by > 0) {
-    warnings.push(
-      `${GRAMMARS}: ${branch} is ${range.ahead_by} commit(s) ahead of the pin ${grammarsPin.sha.slice(0, 12)}.`,
-    );
-  } else {
-    notes.push(`${GRAMMARS}: pinned at ${branch} head ${grammarsPin.sha.slice(0, 12)}.`);
-  }
+  await checkGitPin(GRAMMARS, grammarsPin, grammarsLocked);
+}
+
+const declaredEngine = pkg.dependencies?.[ENGINE] ?? '';
+const enginePin = parseGitPin(declaredEngine);
+if (enginePin) {
+  await checkGitPin(ENGINE, enginePin, lockedCommit(lock, ENGINE));
+} else {
+  notes.push(`${ENGINE}: declared as "${declaredEngine || 'nothing'}", not a commit pin; its drift is not checked.`);
 }
 
 const engineLocked = lockedCommit(lock, ENGINE);
