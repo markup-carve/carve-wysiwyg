@@ -13,7 +13,7 @@
     "check:pins": "node scripts/check-carve-pins.mjs"
   },
   "dependencies": {
-    "@markup-carve/carve": "github:markup-carve/carve-js#1d02ab62530455354b233683380a237e7088a791",
+    "@markup-carve/carve": "github:markup-carve/carve-js#64ef89b4a43675b32dd464ab1c73f09a406f206b",
     "@markup-carve/carve-css": "^0.1.5",
     "@markup-carve/carve-grammars": "github:markup-carve/carve-grammars#dd3b62271ac4ee57068edbc08a7568b3a0f0a5dd",
     "@tiptap/core": "^3.31.3",
