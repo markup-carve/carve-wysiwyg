@@ -130,6 +130,13 @@ describe('task-list authoring', () => {
     editor.commands.toggleTaskList();
     expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta');
   });
+
+  it('converts a bullet list in place instead of nesting it', () => {
+    setCarveDocument(editor, carveToEditorDocument('- alpha\n- beta'));
+    editor.commands.selectAll();
+    editor.commands.toggleTaskList();
+    expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta');
+  });
 });
 
 /**
