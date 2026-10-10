@@ -202,17 +202,6 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   white-space: nowrap;
 }
 
-.preview-pane ul:has(> li > input[type="checkbox"]) {
-  list-style: none;
-  padding-inline-start: 0;
-}
-.preview-pane ul:has(> li > input[type="checkbox"]) ul {
-  padding-inline-start: 1.5rem;
-}
-.preview-pane li > input[type="checkbox"] {
-  margin: 0 .5rem 0 0;
-  vertical-align: -.1em;
-}
 .preview-pane .diagram-error { border: 1px solid var(--danger); color: var(--danger); }
 .diagram-error-message { margin: -.5rem 0 1rem; color: var(--danger); font-size: .82rem; }
 
