@@ -24,18 +24,26 @@ The authoring suite separately verifies that every structure-palette recipe,
 including tables, tabs, and code groups, produces an editable document. Full
 round-trip assertions are added as each underlying Carve production stabilizes.
 
-Source envelopes preserve authored spelling while the document remains
-untouched. Loads therefore go through `setCarveDocument`, and saves through
+When the rich document would not write back identically, the loader attaches a
+source envelope: the authored source plus its canonical projection
+(`carveProjectedSource`). While the document is untouched, saving writes the
+authored source verbatim. After an edit, the serializer diffs the edited
+document's serialization against the projection and applies only that change to
+the authored source, so unedited regions keep their exact spelling. Where the
+edit and the authored spelling overlap, the canonical spelling wins.
+
+Loads therefore go through `setCarveDocument`, and saves through
 `editorToCarve`: Tiptap's `setContent` replaces document content without
-carrying document-node attributes.
+carrying document-node attributes, so the app keeps the envelope itself and
+re-attaches it on save. Loading a new document discards the previous envelope.
 
 Composite figures use the `carveFigureGroup` schema node. A bare `::: figure`
 opener creates a group; an opener with a title or label remains a generic
 container because it is a different Carve production.
 
 The relevant coverage lives in `tests/roundtrip.test.ts`,
-`tests/language-attribute.test.ts`, `tests/composite-figure.test.ts`, and
-`tests/authoring.test.ts`.
+`tests/language-attribute.test.ts`, `tests/composite-figure.test.ts`,
+`tests/edit-keeps-spelling.test.ts`, and `tests/authoring.test.ts`.
 
 ## Known normalization
 
