@@ -27,7 +27,9 @@ Three live panes:
    inserted and deleted text, inline code, code block, headings 1-6,
    bullet/ordered/task list, blockquote, horizontal rule, hard break, link)
    wired to Tiptap commands using Carve's visual semantics. Each button's
-   tooltip shows its Carve syntax and keyboard shortcut.
+   tooltip shows its Carve syntax and keyboard shortcut. The toolbar's right
+   side holds the **Comments** show/hide toggle, **Document metadata**,
+   **Insert structure**, and **Inspector**.
 2. **Carve source** - read-only, regenerated on every edit by running
    `serializeToCarve` on the editor's ProseMirror document; plus an import box
    and a "Load Carve" button (Carve -> editor round trip).
@@ -54,6 +56,10 @@ for hosts to connect to their corresponding client or build-time renderer.
 Inline and display TeX are available under **Math** and rendered with KaTeX in
 the live preview.
 
+The **Comments** toggle shows how many editorial comments the document holds
+(`%%` and `%%%` comments plus inline review notes) and hides or shows them in
+the editor. Hidden comments stay in the document and in the Carve source.
+
 Visual/Source tabs are real keyboard- and touch-activatable controls. In edit
 mode, tables show cell boundaries and selection clearly; inline footnotes,
 cross-references, and citations open document-aware target pickers; definition
@@ -62,6 +68,28 @@ exact Carve source instead of becoming dead ends.
 The built-in starter document deliberately exercises frontmatter, an
 admonition, a captioned table, tabs, a cross-reference, and a footnote so the
 hosted sandbox demonstrates these capabilities without setup.
+
+## Keyboard shortcuts
+
+`Mod` is Ctrl on Windows and Linux and Cmd on macOS.
+
+| Action | Shortcut |
+|--------|----------|
+| Bold, italic, underline | `Mod+B`, `Mod+I`, `Mod+U` |
+| Strike | `Mod+Shift+S` or `Mod+Shift+X` |
+| Inline code | `Mod+E` |
+| Highlight | `Mod+Shift+H` |
+| Superscript, subscript | `Mod+.`, `Mod+,` |
+| Insert, delete marks | `Mod+Shift+I`, `Mod+Shift+D` |
+| Link | `Mod+Shift+K` |
+| Heading 1-6 | `Mod+1` to `Mod+6` |
+| Paragraph | `Mod+Alt+0` |
+| Code block | `Mod+Shift+E` or `Mod+Alt+C` |
+| Blockquote | `Mod+Shift+B` or `Mod+Shift+.` |
+| Bullet, ordered, task list | `Mod+Shift+8`, `Mod+Shift+7`, `Mod+Shift+9` |
+| Hard break | `Shift+Enter` |
+| Clear formatting | `Mod+\` |
+| Insert structure | `Alt+Shift+K` |
 
 ## Fidelity
 
