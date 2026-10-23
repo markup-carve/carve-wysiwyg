@@ -20,6 +20,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import hljs from 'highlight.js/lib/common';
 import katex from 'katex';
 import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
+import { csv, tsv } from '@markup-carve/carve-grammars/highlightjs/delimited.js';
 import { applyLanguageDiff } from '@markup-carve/carve-grammars/diff';
 import { lintCarve } from '@markup-carve/carve';
 // CarveKit registers these extensions at runtime from a plain-JS package.
@@ -32,6 +33,8 @@ import { createCarveEditor, editorToCarve, jsonToCarve, setCarveDocument, toggle
 import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
 
+hljs.registerLanguage('csv', csv);
+hljs.registerLanguage('tsv', tsv);
 hljs.registerLanguage('carve', carveHighlight);
 
 const SAMPLE = `---
