@@ -2,7 +2,7 @@
  * Editor-surface code highlighting must be decoration-only: the document the
  * serializer reads, and therefore the Carve written back, stays byte-identical.
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
@@ -13,6 +13,14 @@ import FIXTURE from './fixtures/code-highlight.crv?raw';
 const SOURCE = FIXTURE.replace(/\n$/, '');
 
 const editors: Editor[] = [];
+
+// The first import and editor mount pay the engine's cold start; keep that out
+// of the per-test timeout.
+beforeAll(() => {
+  const element = document.createElement('div');
+  createCarveEditor({ element }).destroy();
+  carveToEditorDocument(SOURCE);
+}, 60_000);
 
 function mount(): Editor {
   const element = document.createElement('div');
