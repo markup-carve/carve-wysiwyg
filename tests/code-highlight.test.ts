@@ -2,7 +2,7 @@
  * Editor-surface code highlighting must be decoration-only: the document the
  * serializer reads, and therefore the Carve written back, stays byte-identical.
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
@@ -13,6 +13,14 @@ import FIXTURE from './fixtures/code-highlight.crv?raw';
 const SOURCE = FIXTURE.replace(/\n$/, '');
 
 const editors: Editor[] = [];
+
+// The first import and editor mount pay the engine's cold start; keep that out
+// of the per-test timeout.
+beforeAll(() => {
+  const element = document.createElement('div');
+  createCarveEditor({ element }).destroy();
+  carveToEditorDocument(SOURCE);
+}, 60_000);
 
 function mount(): Editor {
   const element = document.createElement('div');
@@ -69,6 +77,20 @@ describe('code block highlighting on the editor surface', () => {
     expect(diff).toContain('hljs-keyword');
     expect(spans(editor, 2).length).toBeGreaterThan(0);
     expect(spans(editor, 3).length).toBeGreaterThan(0);
+  });
+
+  it('marks the csv separator apart from its fields', () => {
+    const editor = mount();
+    const separators = Array.from(editor.view.dom.querySelectorAll('pre')[4]?.querySelectorAll('span.hljs-operator') ?? []);
+    expect(separators.map((s) => s.textContent)).toEqual([',', ',']);
+    expect(spans(editor, 4)).toContain('hljs-string');
+  });
+
+  it('marks the csv separator in a csv fence nested in a carve fence', () => {
+    const editor = mount();
+    setCarveDocument(editor, carveToEditorDocument('````carve\n```csv\na,b\n```\n````'));
+    const separator = editor.view.dom.querySelector('pre code span.hljs-operator');
+    expect(separator?.textContent).toBe(',');
   });
 
   it('keeps the code text free of injected characters', () => {

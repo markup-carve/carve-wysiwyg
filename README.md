@@ -51,7 +51,9 @@ Single fenced code blocks are available directly from the **Code block** toolbar
 button with language and source fields; related multi-language examples remain
 available as **Code group** in the structure palette. Preview fences provide
 syntax highlighting, a language label, and a hover/focus copy action; the bundled
-Carve highlighter is registered alongside common programming languages.
+Carve highlighter is registered alongside common programming languages, with
+carve-grammars' CSV and TSV definitions so a delimited table body shows its
+separators and quoted fields.
 The **Diagrams** palette group includes Mermaid, Graphviz, D2, PlantUML,
 WaveDrom, ABC music, Vega-Lite, and Chart.js source blocks. Mermaid renders
 lazily in this demo; the other formats demonstrate Carve's hydration elements

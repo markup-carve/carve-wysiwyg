@@ -13,9 +13,12 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { common, createLowlight } from 'lowlight';
 import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
+import { csv, tsv } from '@markup-carve/carve-grammars/highlightjs/delimited.js';
 
 export const lowlight = createLowlight(common);
-lowlight.register({ carve: carveHighlight });
+// csv and tsv come first: the Carve grammar highlights a csv/tsv fence inside a
+// carve block only when those languages are registered.
+lowlight.register({ csv, tsv, carve: carveHighlight });
 lowlight.registerAlias({ carve: ['crv'] });
 
 interface HastNode {
