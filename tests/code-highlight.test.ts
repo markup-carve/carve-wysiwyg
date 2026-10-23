@@ -71,6 +71,20 @@ describe('code block highlighting on the editor surface', () => {
     expect(spans(editor, 3).length).toBeGreaterThan(0);
   });
 
+  it('marks the csv separator apart from its fields', () => {
+    const editor = mount();
+    const separators = Array.from(editor.view.dom.querySelectorAll('pre')[4]?.querySelectorAll('span.hljs-operator') ?? []);
+    expect(separators.map((s) => s.textContent)).toEqual([',', ',']);
+    expect(spans(editor, 4)).toContain('hljs-string');
+  });
+
+  it('marks the csv separator in a csv fence nested in a carve fence', () => {
+    const editor = mount();
+    setCarveDocument(editor, carveToEditorDocument('````carve\n```csv\na,b\n```\n````'));
+    const separator = editor.view.dom.querySelector('pre code span.hljs-operator');
+    expect(separator?.textContent).toBe(',');
+  });
+
   it('keeps the code text free of injected characters', () => {
     const editor = mount();
     const code = editor.view.dom.querySelectorAll('pre code')[1]?.textContent;
