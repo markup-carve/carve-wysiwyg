@@ -292,16 +292,21 @@ if (!engineLocked) {
         errors.push(message);
       }
     } else {
-      // The other direction is not an error here: the editor cannot move the
-      // engine that carve-grammars installs for its own loader, because that
-      // dependency is pinned to an exact commit inside carve-grammars. It is
-      // still the number to look at when a production the grammar knows about
-      // does not survive an import, so it is reported rather than buried.
-      warnings.push(
-        `the installed ${ENGINE} build was written against spec ${engineSpec.slice(0, 12)}, ` +
-          `${range.behind_by} commit(s) behind the spec ${grammarsSpec.slice(0, 12)} of the pinned grammar. ` +
-          'Productions newer than the engine parse as literal text on import.',
-      );
+      const forward = await compare(SPEC_REPO, engineSpec, grammarsSpec);
+      if (forward.files?.length > 0 && forward.files.every((file) => file.filename === 'CHANGELOG.md')) {
+        notes.push(`spec revision: the grammar is ahead of the engine by changelog-only changes.`);
+      } else {
+        // The other direction is not an error here: the editor cannot move the
+        // engine that carve-grammars installs for its own loader, because that
+        // dependency is pinned to an exact commit inside carve-grammars. It is
+        // still the number to look at when a production the grammar knows about
+        // does not survive an import, so it is reported rather than buried.
+        warnings.push(
+          `the installed ${ENGINE} build was written against spec ${engineSpec.slice(0, 12)}, ` +
+            `${range.behind_by} commit(s) behind the spec ${grammarsSpec.slice(0, 12)} of the pinned grammar. ` +
+            'Productions newer than the engine parse as literal text on import.',
+        );
+      }
     }
   }
 }

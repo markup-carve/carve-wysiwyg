@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+The editor now follows the current Carve grammar and engine for document import and preview.
+
+### Fixes
+
+- Table spans and wrapped attributes follow the current grammar and engine behavior in the editor (#48).
+
+**Full Changelog**: https://github.com/markup-carve/carve-wysiwyg/compare/0.1.0...HEAD
+
 ## [0.1.0] - 2026-10-24
 
 The first carve-wysiwyg release provides a hosted editor with live Carve source and HTML preview. It supports round trips through the Carve AST and common document structures.
