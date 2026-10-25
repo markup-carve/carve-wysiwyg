@@ -148,14 +148,46 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   min-height: 280px;
 }
 
-/* Match the preview's fixed dark palette; keep the stroke in sync with --bg. */
-.preview-pane {
+/* Both rendered and editable tasks use this app's fixed dark palette. */
+.preview-pane,
+.editor-surface {
+  --carve-surface: var(--panel);
+  --carve-ink-soft: var(--muted);
+  --carve-success: var(--success);
   --carve-task-check-icon: url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%231a1b26' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3 7l3 3 7-7'/%3E%3C/svg%3E");
 }
 
 .editor-surface { min-height: 420px; overflow-x: auto; }
 .editor-surface :focus { outline: none; }
 .editor-surface .ProseMirror { outline: none; min-height: 400px; }
+
+.editor-surface .ProseMirror ul[data-type="taskList"] > li[data-checked] > label input[type="checkbox"] {
+  appearance: none;
+  font-size: inherit;
+  inline-size: 1em;
+  block-size: 1em;
+  margin: 0;
+  vertical-align: -0.125em;
+  border: max(var(--carve-border-width), 1.5px) solid var(--carve-ink-soft);
+  border-radius: 0.2em;
+  background: var(--carve-surface);
+  cursor: pointer;
+}
+.editor-surface .ProseMirror ul[data-type="taskList"] > li[data-checked] > label input[type="checkbox"]:checked {
+  border-color: var(--carve-task-check-fill, var(--carve-success));
+  background: var(--carve-task-check-fill, var(--carve-success)) var(--carve-task-check-icon) center / 80% 80% no-repeat;
+}
+.editor-surface .ProseMirror ul[data-type="taskList"] > li[data-checked] > label input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--carve-accent);
+  outline-offset: 2px;
+}
+@media print, (forced-colors: active) {
+  .editor-surface .ProseMirror ul[data-type="taskList"] > li[data-checked] > label input[type="checkbox"],
+  .editor-surface .ProseMirror ul[data-type="taskList"] > li[data-checked] > label input[type="checkbox"]:checked {
+    appearance: auto;
+    background-image: none;
+  }
+}
 
 .preview-pane pre { padding: var(--carve-code-padding); }
 .preview-code-block {
