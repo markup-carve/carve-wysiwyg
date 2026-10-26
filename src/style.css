@@ -38,6 +38,30 @@
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f7f8fb;
+  --panel: #ffffff;
+  --border: #b6bfd0;
+  --text: #202b40;
+  --muted: #4b5970;
+  --accent: #245ba8;
+  --accent-fg: #ffffff;
+  --danger: #a52c42;
+  --success: #27743c;
+  --carve-raised: #edf1f8;
+  --carve-accent-soft: #dce9ff;
+  --carve-accent-ink: #164684;
+  --carve-info: #245ba8;
+  --carve-info-wash: #e2efff;
+  --carve-success-wash: #e4f4e8;
+  --carve-warn: #875500;
+  --carve-warn-wash: #fff2d5;
+  --carve-danger-wash: #fbe5e8;
+  --carve-neutral: #58677c;
+  --carve-neutral-wash: #e9edf3;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -434,6 +458,16 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
   color: #f3c77b;
   font-size: .7em;
   vertical-align: super;
+}
+:root[data-theme="light"] .editor-surface .ProseMirror pre[data-carve-comment],
+:root[data-theme="light"] .editor-surface .ProseMirror span[data-carve-comment-inline],
+:root[data-theme="light"] .editor-surface .ProseMirror .critic-comment {
+  color: #593a00;
+}
+:root[data-theme="light"] .editor-surface .ProseMirror pre[data-carve-comment]::before,
+:root[data-theme="light"] .editor-surface .ProseMirror span[data-carve-comment-inline]::before,
+:root[data-theme="light"] .editor-surface .ProseMirror .critic-comment::after {
+  color: #805000;
 }
 .editor-surface.comments-hidden .ProseMirror pre[data-carve-comment],
 .editor-surface.comments-hidden .ProseMirror span[data-carve-comment-inline],

@@ -69,11 +69,19 @@ const message = 'The language control follows this full-width code.';
 - bullet item
 . bare-dot ordered item
 
+- [ ] Plan the next edit
+- [x] Review the draft
+- [/] Check the rendering
+- [!] Resolve a blocker
+- [_] Pause a follow-up
+- [-] Drop an obsolete task
+
 ::: tip "Everything stays editable"
 The source, lint findings, normalization diff, and semantic HTML preview update
 alongside the visual document.
 :::
 
+{#structured-content}
 ## Structured content
 
 \`\`\`mermaid
@@ -87,6 +95,9 @@ flowchart LR
 | References and citations | Searchable |
 | Containers and metadata | Inspectable |
 ^ Authoring coverage
+
+|=> 2-col header|<|=> header|
+| Spanning table cells | Distinct markers |
 
 :::: tabs
 :::: tab [Visual]
@@ -121,6 +132,13 @@ const editorEl = $('#editor');
 const sourceEl = $('#carve-source') as HTMLTextAreaElement;
 const previewEl = $('#html-preview');
 const importEl = $('#carve-import') as HTMLTextAreaElement;
+const themeButton = $('#toggle-theme') as HTMLButtonElement;
+themeButton.addEventListener('click', () => {
+  const light = document.documentElement.dataset.theme !== 'light';
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  themeButton.textContent = light ? '☾ Dark' : '☀ Light';
+  themeButton.setAttribute('aria-label', `Use ${light ? 'dark' : 'light'} theme`);
+});
 
 let editor: Editor;
 let loadedSource = '';
