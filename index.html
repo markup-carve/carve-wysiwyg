@@ -15,6 +15,7 @@
     </header>
 
     <div class="toolbar">
+      <button id="toggle-theme" type="button" aria-label="Use light theme" title="Switch between light and dark themes">☀ Light</button>
       <button data-action="bold" aria-label="Bold" aria-pressed="false" title="Bold (*text*, Ctrl/Cmd+B)"><b>B</b></button>
       <button data-action="italic" aria-label="Italic" aria-pressed="false" title="Italic (/text/, Ctrl/Cmd+I)"><i>I</i></button>
       <button data-action="underline" aria-label="Underline" aria-pressed="false" title="Underline (_text_, Ctrl/Cmd+U)"><u>U</u></button>
@@ -64,6 +65,8 @@
               <option value="x">Done [x]</option>
               <option value="-">Dropped [-]</option>
               <option value="_">Paused [_]</option>
+              <option value="/">In progress [/]</option>
+              <option value="!">Blocked [!]</option>
               <option value="&gt;">Deferred [&gt;]</option>
               <option value="?">Maybe [?]</option>
             </select>
