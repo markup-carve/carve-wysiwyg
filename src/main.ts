@@ -32,6 +32,7 @@ import type {} from '@tiptap/extension-underline';
 import { createCarveEditor, editorToCarve, jsonToCarve, setCarveDocument, toggleOrderedList } from './editor';
 import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
+import { isDiffPre } from './diff-fence';
 
 hljs.registerLanguage('csv', csv);
 hljs.registerLanguage('tsv', tsv);
@@ -273,7 +274,7 @@ function refreshOutputs(carve: string): void {
       if (DIAGRAM_LANGUAGES.has(pre.dataset.language ?? '')) return;
       const code = pre.querySelector<HTMLElement>('code[class*="language-"]');
       const requestedLanguage = pre.dataset.language ?? '';
-      if (code && pre.classList.contains('diff')) {
+      if (code && isDiffPre(pre)) {
         // A {.diff} language fence: keep the language highlighting and present
         // the leading +/-/space markers, via the shared carve-grammars helper.
         const highlightLine = hljs.getLanguage(requestedLanguage)

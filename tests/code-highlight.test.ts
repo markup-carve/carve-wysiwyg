@@ -109,4 +109,19 @@ describe('code block highlighting on the editor surface', () => {
     const first = editor.view.dom.querySelector('pre code span[class*="hljs-keyword"]');
     expect(first?.textContent).toBe('const');
   });
+
+  it('presents a captioned {.diff} fence as a diff', () => {
+    const editor = mount();
+    setCarveDocument(editor, carveToEditorDocument('{#lst-a .diff}\n```js\n-let a = 1;\n+let a = 2;\n```\n^ Listing #: x'));
+    const classes = spans(editor, 0);
+    expect(classes).toContain('hljs-addition');
+    expect(classes).toContain('hljs-deletion');
+  });
+
+  it('needs diff as a whole class token on the figure', () => {
+    const editor = mount();
+    setCarveDocument(editor, carveToEditorDocument('{#lst-a .diffs}\n```js\n-let a = 1;\n+let a = 2;\n```\n^ Listing #: x'));
+    expect(spans(editor, 0)).not.toContain('hljs-addition');
+    expect(spans(editor, 0)).not.toContain('hljs-deletion');
+  });
 });

@@ -14,6 +14,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { common, createLowlight } from 'lowlight';
 import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
 import { csv, tsv } from '@markup-carve/carve-grammars/highlightjs/delimited.js';
+import { hasDiffClass } from './diff-fence';
 
 export const lowlight = createLowlight(common);
 // csv and tsv come first: the Carve grammar highlights a csv/tsv fence inside a
@@ -51,10 +52,18 @@ function push(out: Decoration[], from: number, list: Token[]): void {
   }
 }
 
-function blockDecorations(node: PMNode, start: number, out: Decoration[]): void {
+/** A captioned fence's attribute line lives on its figure, not the code block. */
+function isDiffBlock(node: PMNode, parent: PMNode | null): boolean {
+  if (hasDiffClass(node.attrs.class)) return true;
+  if (parent?.type.name !== 'carveFigure') return false;
+  let targets = 0;
+  parent.forEach((child) => { if (child.type.name !== 'carveCaption') targets++; });
+  return targets === 1 && hasDiffClass(parent.attrs.class);
+}
+
+function blockDecorations(node: PMNode, start: number, isDiff: boolean, out: Decoration[]): void {
   const language = String(node.attrs.language ?? '');
   const known = language !== '' && lowlight.registered(language);
-  const isDiff = String(node.attrs.class ?? '').split(/\s+/).includes('diff');
   const text = node.textContent;
   if (!isDiff) {
     if (known) push(out, start, tokens(language, text));
@@ -75,9 +84,9 @@ function blockDecorations(node: PMNode, start: number, out: Decoration[]): void 
 
 function decorate(doc: PMNode): DecorationSet {
   const out: Decoration[] = [];
-  doc.descendants((node, pos) => {
+  doc.descendants((node, pos, parent) => {
     if (node.type.name !== 'codeBlock') return true;
-    blockDecorations(node, pos + 1, out);
+    blockDecorations(node, pos + 1, isDiffBlock(node, parent), out);
     return false;
   });
   return DecorationSet.create(doc, out);
