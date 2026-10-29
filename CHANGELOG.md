@@ -7,6 +7,7 @@ The editor now follows the current Carve grammar and engine for document import 
 ### Fixes
 
 - Table spans and wrapped attributes follow the current grammar and engine behavior in the editor (#48).
+- Captioned `{.diff}` fences now render as diffs in the editor and the preview.
 
 **Full Changelog**: https://github.com/markup-carve/carve-wysiwyg/compare/0.1.0...HEAD
 
