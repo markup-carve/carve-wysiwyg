@@ -13,30 +13,32 @@ npm run check:pins
 
 ## Dependency pins
 
-Both Carve packages are git commit pins in `package.json`, not npm version
-ranges: `@markup-carve/carve` points at a `carve-js` commit and
-`@markup-carve/carve-grammars` at a `carve-grammars` commit. Each pin is a
-merged commit on that repository's `main`, because editor and engine
-productions can reach `main` before a matching package is published. For
-example, the language attribute (`{:TAG}`) landed after the then-current grammar
-release. A branch commit must not be used: it can silently omit work merged
-after that branch diverged.
+The three Carve packages are published npm version ranges in `package.json`:
+`@markup-carve/carve` (carve-js), `@markup-carve/carve-grammars` and
+`@markup-carve/carve-css`. When an editor or engine change reaches a
+repository's `main` before a matching package is published, a pull request may
+pin that package to a `github:owner/repo#sha` commit instead. That commit must
+be merged on the repository's `main`; a branch commit can silently omit work
+merged after the branch diverged. Move back to a published range once the
+release is out.
 
 The `overrides` entry in `package.json` makes carve-grammars use the same
-carve-js build as the app, so the engine pin decides both the preview and the
-parser behind the editor's loader.
+carve-js build as the app, so the engine version decides both the preview and
+the parser behind the editor's loader.
 
 `npm run check:pins` and `.github/workflows/pins.yml` (on pull requests that
-touch a pin) verify that the lockfile resolves each pinned commit, the pinned
-commit belongs to the upstream default branch, and the grammar is not older
-than the spec revision used by the installed engine.
-Upstream moving past the pin is only a warning there.
+touch a pin) verify the pins. A published carve-grammars range must install
+from the npm registry, and trailing the latest published version is a warning.
+A commit pin must match the lockfile's resolved commit and belong to the
+upstream default branch, and when both packages are commit pins the grammar must
+not be older than the spec revision of the installed engine. Published tarballs
+record no spec revision, so that last comparison is skipped for published
+ranges.
+Upstream moving past a pin is only a warning there.
 `.github/workflows/engine-drift.yml` runs `check:pins -- --drift` daily. With
 `--drift` those warnings exit 3, which files or updates one tracking issue and
 leaves the run green; a clean run closes the issue. Any other failure, such as
 an error or an unreachable API, turns the run red.
-Moving back to a published version range requires updating that policy because
-published tarballs do not record a spec revision.
 
 The old vendored grammar was removed after 0.1.3. Its local footnote
 parse-priority patches landed upstream in `carve-grammars` #199.
