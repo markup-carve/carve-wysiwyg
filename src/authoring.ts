@@ -63,7 +63,7 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'caption', label: 'Caption', value: 'Table caption' },
       { name: 'id', label: 'ID', value: 'table-1' },
     ],
-    source: v => `{#${safeLabel(v.id, 'table-1')}}\n|=< Name |=> Value |\n| First | 1 |\n^ ${clean(v.caption, 'Table caption')}`,
+    source: v => `{#${safeLabel(v.id, 'table-1')}}\n|={<} Name |={>} Value |\n| First | 1 |\n^ ${clean(v.caption, 'Table caption')}`,
   },
   {
     id: 'code-block', label: 'Code block', group: 'Structure',
