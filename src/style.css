@@ -363,6 +363,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 #source-diff pre { overflow: auto; padding: .5rem; background: var(--panel); color: var(--text); font-size: .75rem; }
 .lint-results { min-height: 2.5rem; margin: 0; padding-left: 1.4rem; }
 .lint-results button { border: 0; background: transparent; color: var(--danger); text-align: left; cursor: pointer; }
+.lint-results .lint-hint button { color: var(--muted); }
 .lint-ok { color: var(--success); }
 
 @media (max-width: 600px) { .recipe-list { grid-template-columns: 1fr; } }
