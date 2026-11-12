@@ -52,13 +52,13 @@ flowchart LR
   Editor --> Preview[Rendered preview]
 \`\`\`
 
-|=< Feature |=> Status |
+|={<} Feature |={>} Status |
 | Tables and figures | Editable |
 | References and citations | Searchable |
 | Containers and metadata | Inspectable |
 ^ Authoring coverage
 
-|=> 2-col header|<|=> header|
+|={>} 2-col header|<|={>} header|
 | Spanning table cells |<| Distinct markers |
 
 :::: tabs

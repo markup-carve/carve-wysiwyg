@@ -33,6 +33,7 @@ import { createCarveEditor, editorToCarve, jsonToCarve, setCarveDocument, toggle
 import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
 import { SAMPLE } from './sample';
+import { isLintHint, lintFindingLabel } from './lint-findings';
 import { isDiffPre } from './diff-fence';
 
 hljs.registerLanguage('csv', csv);
@@ -163,9 +164,10 @@ function refreshOutputs(carve: string): void {
   } else {
     findings.forEach(finding => {
       const item = document.createElement('li');
+      if (isLintHint(finding)) item.className = 'lint-hint';
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = `Line ${finding.line ?? '?'} · ${finding.rule}: ${finding.message}`;
+      button.textContent = lintFindingLabel(finding);
       button.addEventListener('click', () => {
         sourceEl.focus();
         sourceEl.setSelectionRange(finding.start ?? 0, finding.end ?? finding.start ?? 0);

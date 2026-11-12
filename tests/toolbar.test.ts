@@ -79,4 +79,10 @@ describe('marks the new toolbar buttons toggle', () => {
     editor.chain().setTextSelection(2).toggleHeading({ level: level as 3 | 4 | 5 | 6 }).run();
     expect(editorToCarve(editor)).toBe(`${'#'.repeat(level)} Title`);
   });
+
+  it('writes an inserted thematic break as ***', () => {
+    setCarveDocument(editor, carveToEditorDocument('Above'));
+    editor.chain().setTextSelection(6).setHorizontalRule().run();
+    expect(editorToCarve(editor)).toContain('\n***');
+  });
 });
