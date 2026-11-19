@@ -1,5 +1,10 @@
 # Read-only element authoring opportunities
 
+This audit describes the Carve 0.1 Tiptap kit. On Carve 0.2 the editor runs on
+Tiptap's stock extensions until a 0.2 kit exists
+([carve-grammars#906](https://github.com/markup-carve/carve-grammars/issues/906));
+see [round-trip behavior](round-trip.md).
+
 This audit covers Carve nodes currently represented as atomic or otherwise
 source-preserved in the shared Tiptap grammar. The document-metadata card is now
 implemented and provides the interaction model for other block-level forms.

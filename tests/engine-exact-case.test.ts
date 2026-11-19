@@ -9,7 +9,7 @@
  * These assert the behavior rather than the version string.
  */
 import { describe, it, expect } from 'vitest';
-import { lintCarve } from '@markup-carve/carve';
+import { lint } from '@markup-carve/carve';
 import { carveToHtmlRaw } from '../src/carve-import';
 
 const CASE_ONLY = '# Setup Guide\n\nSee </#setup-guide>.\n';
@@ -17,8 +17,8 @@ const EXACT = '# Setup Guide\n\nSee </#Setup-Guide>.\n';
 
 describe('the pinned engine compares every name lookup with exact case', () => {
   it('flags a cross-reference that differs from the heading id only in case', () => {
-    expect(lintCarve(CASE_ONLY).map(finding => finding.rule)).toContain('broken-crossref');
-    expect(lintCarve(EXACT)).toEqual([]);
+    expect(lint(CASE_ONLY).map(finding => finding.code)).toContain('broken-crossref');
+    expect(lint(EXACT)).toEqual([]);
   });
 
   it('renders that cross-reference as literal text in the preview', () => {
@@ -28,10 +28,10 @@ describe('the pinned engine compares every name lookup with exact case', () => {
   });
 
   it('flags a reference image with no matching definition', () => {
-    expect(lintCarve('![alt][Label]\n').map(finding => finding.rule)).toContain(
+    expect(lint('![alt][Label]\n').map(finding => finding.code)).toContain(
       'unresolved-reference-link',
     );
-    expect(lintCarve('![alt][]\n').map(finding => finding.rule)).toContain(
+    expect(lint('![alt][]\n').map(finding => finding.code)).toContain(
       'unresolved-reference-link',
     );
   });

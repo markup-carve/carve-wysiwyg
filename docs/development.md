@@ -13,25 +13,21 @@ npm run check:pins
 
 ## Dependency pins
 
-The three Carve packages are published npm version ranges in `package.json`:
+On `next2` the three Carve packages are pinned to `github:owner/repo#sha`
+commits on their own `next2` branches, since Carve 0.2 is not published yet:
 `@markup-carve/carve` (carve-js), `@markup-carve/carve-grammars` and
-`@markup-carve/carve-css`. When an editor or engine change reaches a
-repository's `main` before a matching package is published, a pull request may
-pin that package to a `github:owner/repo#sha` commit instead. That commit must
-be merged on the repository's `main`; a branch commit can silently omit work
-merged after the branch diverged. Move back to a published range once the
-release is out.
-
-The `overrides` entry in `package.json` makes carve-grammars use the same
-carve-js build as the app, so the engine version decides both the preview and
-the parser behind the editor's loader.
+`@markup-carve/carve-css`. On `main` they are published npm version ranges, and
+a commit pin there must be merged on the repository's `main`.
 
 `npm run check:pins` and `.github/workflows/pins.yml` (on pull requests that
 touch a pin) verify the pins. A published carve-grammars range must install
 from the npm registry, and trailing the latest published version is a warning.
 A commit pin must match the lockfile's resolved commit and belong to the
-upstream default branch, and when both packages are commit pins the grammar must
-not be older than the spec revision of the installed engine. Published tarballs
+upstream default branch, or to the branch `CARVE_PIN_BRANCH` names (`pins.yml`
+sets it to `next2` for pull requests into `next2`), and when both packages are
+commit pins the grammar must not be older than the spec revision of the
+installed engine. A grammar build that bundles no engine, as the 0.2 grammars
+do, only warns about that gap. Published tarballs
 record no spec revision, so that last comparison is skipped for published
 ranges.
 Upstream moving past a pin is only a warning there.
@@ -43,10 +39,8 @@ an error or an unreachable API, turns the run red.
 The old vendored grammar was removed after 0.1.3. Its local footnote
 parse-priority patches landed upstream in `carve-grammars` #199.
 
-`CarveKit` imports Tiptap extensions beyond its declared peer dependencies,
-including code blocks, highlighting, subscript/superscript, images, links,
-tables, and task lists. They remain direct dependencies of this app so the kit
-can always resolve them.
+The editor's Tiptap extensions are direct dependencies of this app and are
+assembled in `src/editor.ts` (`EDITOR_EXTENSIONS`).
 
 ## GitHub Pages deployment
 

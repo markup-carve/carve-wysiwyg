@@ -1,4 +1,10 @@
-import { escapeCarve } from '@markup-carve/carve-grammars/tiptap';
+import { AST_VERSION, write } from '@markup-carve/carve';
+
+/** A plain text run written so it reads back as literal Carve text, by the engine's writer. */
+export function escapeCarve(text: string): string {
+  if (!text) return '';
+  return write({ type: 'document', astVersion: AST_VERSION, children: [{ type: 'paragraph', children: [{ type: 'text', value: text }] }] }).replace(/\n$/, '');
+}
 
 export interface AuthoringField {
   name: string;
@@ -197,7 +203,9 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'first', label: 'First tab', value: 'First' },
       { name: 'second', label: 'Second tab', value: 'Second' },
     ],
-    source: v => `::: tabs\n:::: tab [${titleSafe(clean(v.first, 'First'))}]\nFirst panel.\n::::\n\n:::: tab [${titleSafe(clean(v.second, 'Second'))}]\nSecond panel.\n::::\n:::`,
+    // The outer fence is the longer run, since a longer bare closer ends a shorter div (C2-B-109, U-219),
+    // and the tabs extension reads a quoted title.
+    source: v => `:::: tabs\n::: tab "${titleSafe(clean(v.first, 'First'))}"\nFirst panel.\n:::\n\n::: tab "${titleSafe(clean(v.second, 'Second'))}"\nSecond panel.\n:::\n::::`,
   },
   {
     id: 'code-group', label: 'Code group', group: 'Containers',
@@ -212,7 +220,8 @@ export const AUTHORING_RECIPES: AuthoringRecipe[] = [
       { name: 'key', label: 'Citation key', value: 'doe2026', required: true },
       { name: 'entry', label: 'Bibliography entry', value: 'Doe, J. (2026). Example.' },
     ],
-    source: v => `Evidence [@${safeLabel(v.key, 'doe2026')}].\n\n[@${safeLabel(v.key, 'doe2026')}]: ${continuation(clean(v.entry, 'Doe, J. (2026). Example.'))}\n`,
+    // The 0.2 citation is `:cite[key]` with its entry in a references directive (C2-X-058).
+    source: v => `Evidence :cite[${safeLabel(v.key, 'doe2026')}].\n\n::: references\n:: ${safeLabel(v.key, 'doe2026')}\n: ${oneLine(clean(v.entry, 'Doe, J. (2026). Example.'))}\n:::\n`,
   },
   {
     id: 'definition-list', label: 'Definition list', group: 'Structure',
