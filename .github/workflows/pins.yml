@@ -42,5 +42,5 @@ jobs:
         if: steps.changed.outputs.run == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          CARVE_PIN_BRANCH: ${{ github.head_ref == 'next2' || github.base_ref == 'next2' && 'next2' || '' }}
+          CARVE_PIN_BRANCH: ${{ (github.head_ref == 'next2' || github.base_ref == 'next2') && 'next2' || '' }}
         run: node scripts/check-carve-pins.mjs
