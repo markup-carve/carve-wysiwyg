@@ -21,7 +21,7 @@ import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
 import { csv, tsv } from '@markup-carve/carve-grammars/highlightjs/delimited.js';
 import { applyLanguageDiff } from '@markup-carve/carve-grammars/diff';
 import { lint } from '@markup-carve/carve';
-import { canonicalCarve, carveToEditorDocument, createCarveEditor, editorToCarve, insertCarve, setCarveDocument, setEditorFrontmatter, toggleOrderedList } from './editor';
+import { canonicalCarve, carveToEditorDocument, createCarveEditor, editorToCarve, insertCarve, setCarveDocument, setEditorFrontmatter, toggleOrderedList, withTreeAttributes } from './editor';
 import { carveCommentCount, carveHeadingTargets, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
 import { SAMPLE } from './sample';
@@ -483,13 +483,18 @@ function inspectSelection(): void {
       && !['carveAttrOrder', 'carveKeyValues', 'items', 'carveTaskState'].includes(name)
       && (value == null || ['string', 'number', 'boolean'].includes(typeof value)),
   );
+  // The kit keeps a node's `{#id .class}` in the tree attributes of its `carve` attribute.
+  const treeAttrs = (node.attrs.carve as { attrs?: { id?: string; classes?: string[] } } | null)?.attrs;
+  if ('carve' in node.attrs) {
+    entries.unshift(['carve:class', treeAttrs?.classes?.join(' ') ?? null], ['carve:id', treeAttrs?.id ?? null]);
+  }
   if (!entries.length) {
     $('#inspector-help').textContent = `${inspectedType} has no editable attributes.`;
     return;
   }
   entries.forEach(([name, value]) => {
     const label = document.createElement('label');
-    label.textContent = name;
+    label.textContent = name.replace(/^carve:/, '');
     if (name === 'textAlign') {
       const select = document.createElement('select');
       select.name = name;
@@ -524,7 +529,18 @@ function inspectSelection(): void {
 inspectorFields.addEventListener('submit', event => {
   event.preventDefault();
   const attrs: Record<string, unknown> = {};
-  inspectorFields.querySelectorAll<HTMLInputElement>('input').forEach(input => {
+  const id = inspectorFields.querySelector<HTMLInputElement>('input[name="carve:id"]');
+  const classes = inspectorFields.querySelector<HTMLInputElement>('input[name="carve:class"]');
+  if (id && classes) {
+    const { $from } = editor.state.selection;
+    for (let depth = $from.depth; depth >= 0; depth -= 1) {
+      const node = $from.node(depth);
+      if (node.type.name !== inspectedType) continue;
+      attrs.carve = withTreeAttributes(node.attrs.carve as Record<string, unknown> | null, id.value, classes.value);
+      break;
+    }
+  }
+  inspectorFields.querySelectorAll<HTMLInputElement>('input:not([name^="carve:"])').forEach(input => {
     attrs[input.name] = input.value === '' ? null
       : input.dataset.kind === 'boolean' ? input.value === 'true'
       : input.dataset.kind === 'number' ? Number(input.value) : input.value;

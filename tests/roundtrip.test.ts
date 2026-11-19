@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { carveToEditorDocument } from '../src/carve-import';
-import { EDITOR_EXTENSIONS, editorToCarve, setCarveDocument, toggleOrderedList } from '../src/editor';
+import { EDITOR_EXTENSIONS, editorToCarve, setCarveDocument, toggleOrderedList, withTreeAttributes } from '../src/editor';
 
 
 let editor: Editor;
@@ -176,5 +176,17 @@ describe('the source envelope survives a mount', () => {
     // Without this the two cases above would pass for a serializer that
     // returned the loaded source unconditionally, which is not preservation.
     expect(out).not.toBe('{#fig-x}\n::: note\nBody.\n:::\n');
+  });
+});
+
+describe('inspector tree attributes', () => {
+  it('sets and clears a fence id and class through the kit attribute', () => {
+    setCarveDocument(editor, carveToEditorDocument('{.diff title=a}\n```js\nx\n```\n'));
+    editor.commands.setTextSelection(2);
+    const node = editor.state.selection.$from.parent;
+    editor.commands.updateAttributes('codeBlock', { carve: withTreeAttributes(node.attrs.carve, 'lst', 'diff wide') });
+    expect(editorToCarve(editor)).toBe('{#lst .diff .wide title=a}\n```js\nx\n```\n');
+    editor.commands.updateAttributes('codeBlock', { carve: withTreeAttributes(editor.state.selection.$from.parent.attrs.carve, '', '') });
+    expect(editorToCarve(editor)).toBe('{title=a}\n```js\nx\n```\n');
   });
 });

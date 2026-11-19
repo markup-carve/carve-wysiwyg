@@ -125,6 +125,19 @@ export function editorToCarve(editor: Editor): string {
   return writeDocument(editor.getJSON(), loaded.get(editor));
 }
 
+/** A node's kit `carve` attribute with its tree `id` and classes (space-separated) replaced; empty values remove them. */
+export function withTreeAttributes(carve: Record<string, unknown> | null, id: string, classes: string): Record<string, unknown> | null {
+  const treeAttrs = { ...(carve?.attrs as Record<string, unknown> | undefined) };
+  delete treeAttrs.id;
+  delete treeAttrs.classes;
+  if (id.trim()) treeAttrs.id = id.trim();
+  if (classes.trim()) treeAttrs.classes = classes.trim().split(/\s+/);
+  const next: Record<string, unknown> = { ...carve };
+  delete next.attrs;
+  if (Object.keys(treeAttrs).length) next.attrs = treeAttrs;
+  return Object.keys(next).length ? next : null;
+}
+
 /** Toggle an ordered list. */
 export function toggleOrderedList(editor: Editor): boolean {
   return editor.chain().focus().toggleOrderedList().run();
