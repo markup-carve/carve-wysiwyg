@@ -16,7 +16,7 @@ const a = 1;
 ```
 
 ```crv
-=mark= and _under_
+{=mark=} and {_under_}
 ```
 
 ```csv

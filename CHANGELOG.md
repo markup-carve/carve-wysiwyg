@@ -4,6 +4,12 @@
 
 The editor now follows the current Carve grammar and engine for document import and preview.
 
+### Breaking
+
+- The editor runs on Carve 0.2 (carve-js, carve-grammars and carve-css pinned to their `next2` commits). It loads the engine's HTML render into Tiptap and writes edits back through the engine's HTML importer, because carve-grammars 0.2 has no Tiptap kit yet (markup-carve/carve-grammars#906). After an edit, divs, admonitions, tabs, figures, captions, definition lists, line blocks, math, footnotes, comments and attribute lines are dropped or flattened; an unedited document is written back unchanged.
+- The starter document and the structure recipes use 0.2 spellings: braced underline, strike and highlight, `{-old-}{+new+}` for a substitution, `:::: tabs` around `::: tab "Title"`, and `:cite[key]` with a references block for a citation.
+- The preview has no citation links until carve-js has a 0.2 citation extension (markup-carve/carve-js#5082).
+
 ### Fixes
 
 - Table spans and wrapped attributes follow the current grammar and engine behavior in the editor (#48).

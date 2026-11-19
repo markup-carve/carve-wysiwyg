@@ -1,15 +1,27 @@
 /**
  * Tiptap editor wiring for the Carve WYSIWYG app.
  *
- * The editor is initialized with carve-grammars' CarveKit (which internally
- * pulls StarterKit, Underline, Link, lists, tables, task lists, code block,
- * highlight, sub/superscript, image, plus the Carve-specific marks/nodes) and
- * exposes the serializer so the live Carve source pane can update on every
- * change.
+ * Carve 0.2 has no Tiptap editor kit yet (markup-carve/carve-grammars#906), so
+ * the editor runs on the HTML pivot: it is seeded with the engine's HTML render
+ * and every change goes back through the engine's HTML importer. Front matter has
+ * no HTML form, so it is held beside the editor and written back unchanged.
  */
-import { Editor, getSchema } from '@tiptap/core';
-import type { JSONContent } from '@tiptap/core';
-import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
+import { Editor, Extension, Mark, generateHTML } from '@tiptap/core';
+import type { Extensions, JSONContent } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import Highlight from '@tiptap/extension-highlight';
+import Image from '@tiptap/extension-image';
+import Link from '@tiptap/extension-link';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
+import { Table } from '@tiptap/extension-table';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TableRow from '@tiptap/extension-table-row';
+import TaskItem from '@tiptap/extension-task-item';
+import TaskList from '@tiptap/extension-task-list';
+import Underline from '@tiptap/extension-underline';
+import { importDocument } from '@markup-carve/carve';
 import { CarveCodeHighlight } from './code-highlight';
 
 export interface CarveEditorOptions {
@@ -18,202 +30,224 @@ export interface CarveEditorOptions {
   onUpdate?: (carve: string) => void;
 }
 
-/** The document-level attribute names CarveKit's source envelope uses. */
-const ENVELOPE_ATTRS = [
-  'carveSource', 'carveFingerprint', 'carveSourceLayout', 'carveProjectedSource',
-] as const;
-
-type Envelope = Record<string, unknown>;
-
-/**
- * The source envelope of the document currently loaded into each editor.
- *
- * WHY THIS IS HELD HERE RATHER THAN ON THE DOCUMENT. `carveToProseMirror`
- * returns a doc carrying `carveSource` / `carveFingerprint` /
- * `carveSourceLayout` whenever the rich model would be lossy to write back, and
- * `serializeToCarve` writes that source verbatim for as long as the fingerprint
- * still matches the document - which is how a construct with no exact editor
- * model survives load/save instead of being normalized away.
- *
- * Tiptap's `setContent` does not carry them. It dispatches
- * `tr.replaceWith(0, doc.content.size, document)`, which replaces the doc's
- * CONTENT and leaves the doc NODE - and therefore its attributes - as it was,
- * so the envelope never reaches `editor.getJSON()`. Measured, not assumed: the
- * import produces the three attrs and the editor hands back all three as
- * `null`.
- *
- * The visible symptom was a block-attribute line above a fenced div. CarveKit's
- * `carveDiv` models the class but not the `{#id}`, so the rich document is
- * lossy, the bridge produced an envelope, the envelope was dropped, and
- *
- *   {#fig-x}
- *   ::: figure
- *   ![one](a.png)
- *   ^ (a) One
- *   :::
- *
- * came back out without its `{#fig-x}` on the first save.
- *
- * A WeakMap rather than a field on the editor so nothing is retained after an
- * editor is destroyed. Re-attaching is safe without any staleness check of its
- * own: the fingerprint is that check, and once the document is edited the
- * serializer merges the edit into the authored source instead.
- */
-const loaded = new WeakMap<Editor, { doc: JSONContent; envelope: Envelope }>();
-
-/**
- * The CarveKit schema, read once, so the attribute values Tiptap materializes
- * from a node's declared defaults can be told from values the bridge set.
- */
-const schema = getSchema([CarveKit]);
-
-/** The envelope attrs of a bridge document, or null when it carries none. */
-function envelopeOf(doc: JSONContent): Envelope | null {
-  const attrs = (doc as { attrs?: Envelope }).attrs;
-  if (!attrs) return null;
-  const kept: Envelope = {};
-  for (const name of ENVELOPE_ATTRS) {
-    if (attrs[name] != null) kept[name] = attrs[name];
-  }
-  return Object.keys(kept).length ? kept : null;
+/** A Carve document prepared for the editor: its source, front matter and body HTML. */
+export interface EditorDocument {
+  source: string;
+  frontmatter: string;
+  html: string;
 }
 
-/** Every attribute the schema declares for a node or mark, with its default. */
-function schemaDefaults(type: unknown): Record<string, unknown> | null {
-  if (typeof type !== 'string') return null;
-  const spec = schema.nodes[type] ?? schema.marks[type];
-  if (!spec) return null;
-  const out: Record<string, unknown> = {};
-  for (const [name, attr] of Object.entries(spec.spec.attrs ?? {})) {
-    out[name] = (attr as { default?: unknown }).default;
-  }
-  return out;
-}
+/** `{+ +}` and `{- -}`, which the importer reads back from `<ins>` and `<del>`. */
+const CarveInsert = Mark.create({
+  name: 'carveInsert',
+  parseHTML: () => [{ tag: 'ins' }],
+  renderHTML: () => ['ins', 0],
+  addKeyboardShortcuts() {
+    return { 'Mod-Shift-i': () => this.editor.commands.toggleMark(this.name) };
+  },
+});
+const CarveDelete = Mark.create({
+  name: 'carveDelete',
+  parseHTML: () => [{ tag: 'del' }],
+  renderHTML: () => ['del', 0],
+  addKeyboardShortcuts() {
+    return { 'Mod-Shift-d': () => this.editor.commands.toggleMark(this.name) };
+  },
+});
+
+/** The shortcuts the toolbar names (index.html) beyond Tiptap's defaults. */
+const CarveShortcuts = Extension.create({
+  name: 'carveShortcuts',
+  addKeyboardShortcuts() {
+    const heading = (level: 1 | 2 | 3 | 4 | 5 | 6) => () => this.editor.commands.toggleHeading({ level });
+    return {
+      'Mod-1': heading(1), 'Mod-2': heading(2), 'Mod-3': heading(3),
+      'Mod-4': heading(4), 'Mod-5': heading(5), 'Mod-6': heading(6),
+      'Mod-Shift-e': () => this.editor.commands.toggleCodeBlock(),
+      'Mod-Shift-k': () => {
+        if (this.editor.isActive('link')) return this.editor.commands.unsetLink();
+        const href = typeof window === 'undefined' ? null : window.prompt('Link URL:');
+        return href ? this.editor.commands.setLink({ href }) : false;
+      },
+    };
+  },
+});
+
+/** A fence's class (`{.diff}`) and title live on `<pre>`; the importer reads them back from there. */
+const CarveCodeBlockAttributes = Extension.create({
+  name: 'carveCodeBlockAttributes',
+  addGlobalAttributes() {
+    return [{
+      types: ['codeBlock'],
+      attributes: {
+        class: { default: null, parseHTML: (element: HTMLElement) => element.getAttribute('class'), renderHTML: (attrs: Record<string, unknown>) => attrs.class ? { class: attrs.class } : {} },
+        title: { default: null, parseHTML: (element: HTMLElement) => element.getAttribute('title'), renderHTML: (attrs: Record<string, unknown>) => attrs.title ? { title: attrs.title } : {} },
+      },
+    }];
+  },
+});
+
+/** The engine writes a task list as `ul.task-list` with `li.task` items (C2-H-032). */
+const CarveTaskList = TaskList.extend({
+  parseHTML() {
+    return [...(this.parent?.() ?? []), { tag: 'ul.task-list', priority: 51 }];
+  },
+});
+
+/** Task states beyond done and open ride on `data-task-state` (C2-M-032). */
+const CarveTaskItem = TaskItem.extend({
+  parseHTML() {
+    return [...(this.parent?.() ?? []), { tag: 'li.task', priority: 51 }];
+  },
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      checked: {
+        default: false,
+        keepOnSplit: false,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-checked') === 'true'
+          || element.getAttribute('data-task-state') === 'x'
+          || element.querySelector(':scope > input[type="checkbox"]')?.hasAttribute('checked') === true,
+        renderHTML: (attrs: Record<string, unknown>) => ({ 'data-checked': attrs.checked }),
+      },
+      carveTaskState: {
+        default: null,
+        parseHTML: (element: HTMLElement) => {
+          const state = element.getAttribute('data-task-state');
+          return state && state !== 'x' && state !== ' ' ? state : null;
+        },
+        renderHTML: (attrs: Record<string, unknown>) => attrs.carveTaskState ? { 'data-task-state': attrs.carveTaskState } : {},
+      },
+    };
+  },
+});
+
+export const EDITOR_EXTENSIONS: Extensions = [
+  StarterKit.configure({ link: false, underline: false }),
+  Underline,
+  Highlight,
+  Subscript,
+  Superscript,
+  Link.configure({ openOnClick: false }),
+  Image,
+  Table,
+  TableRow,
+  TableHeader,
+  TableCell,
+  CarveTaskList,
+  CarveTaskItem.configure({ nested: true }),
+  CarveInsert,
+  CarveDelete,
+  CarveCodeBlockAttributes,
+  CarveShortcuts,
+  CarveCodeHighlight,
+];
 
 /**
- * A document reduced to what the AUTHOR wrote, with everything the schema would
- * put back stripped out.
- *
- * The point is to recognize an unedited document after a mount. Tiptap hands
- * back every attribute a node's schema declares, so `{"class":"figure"}` comes
- * back as `{"id":null,"keyValues":null,"label":null,"class":"figure",
- * "title":null}` and the mounted document never compares equal to the one that
- * was loaded.
- *
- * DROPPING NULLS IS NOT ENOUGH, and that is what this used to do. A default
- * does not have to be null: `carveCaption` declares `short` with a default of
- * `false`, so a caption came back carrying `{"short":false}` - not null, not
- * pruned, never equal. The moment carve-grammars added that attribute, every
- * document holding a caption stopped being recognized, the source envelope was
- * discarded, and a block-attribute line above a construct the rich model does
- * not carry was written back out without it. Nothing failed: the round trip
- * simply became lossy, which is the failure mode the envelope exists to
- * prevent.
- *
- * SYMMETRY IS THE OTHER HALF. This runs over BOTH documents, never over the
- * mounted one alone. The bridge does set some attributes to a value that is
- * also the schema default - `carveComment` writes `block: false` for a `%%`
- * line - so pruning only the mounted side would break exactly the documents
- * pruning is meant to keep.
+ * Editor HTML in the shape the engine's importer reads: Tiptap's task items and
+ * table chrome become the elements a Carve render writes, so the importer keeps
+ * them as tasks and a head row instead of keeping Tiptap's attributes as keys.
  */
-function authored(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(authored);
-  if (!value || typeof value !== 'object') return value;
-  const node = value as Record<string, unknown>;
-  const defaults = schemaDefaults(node['type']);
-  const out: Record<string, unknown> = {};
-  for (const [key, inner] of Object.entries(node)) {
-    if (inner === null) continue;
-    if (key !== 'attrs' || !inner || typeof inner !== 'object') {
-      out[key] = authored(inner);
-      continue;
+export function normalizeEditorHtml(html: string): string {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const root = template.content;
+  root.querySelectorAll('ul[data-type="taskList"]').forEach(list => list.removeAttribute('data-type'));
+  root.querySelectorAll('li[data-type="taskItem"]').forEach(item => {
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    if (item.getAttribute('data-checked') === 'true') box.setAttribute('checked', '');
+    item.querySelector(':scope > label')?.remove();
+    const body = item.querySelector(':scope > div');
+    if (body) body.replaceWith(...body.childNodes);
+    item.prepend(box);
+    item.removeAttribute('data-type');
+    item.removeAttribute('data-checked');
+  });
+  // An empty item (what Enter leaves) would write a bare marker; Tiptap's trailing paragraph writes nothing.
+  root.querySelectorAll('li').forEach(item => {
+    if (!item.textContent?.trim() && !item.querySelector('img, input:not([type="checkbox"])')) item.remove();
+  });
+  root.querySelectorAll(':scope > p').forEach(paragraph => {
+    if (!paragraph.textContent?.trim() && !paragraph.querySelector('img')) paragraph.remove();
+  });
+  // Tiptap wraps every item in a paragraph; a render writes a tight item's text bare (C2-M-033).
+  root.querySelectorAll('li').forEach(item => {
+    const blocks = [...item.children].filter(child => child.tagName !== 'INPUT');
+    const [first, ...rest] = blocks;
+    if (first?.tagName === 'P' && !first.attributes.length && rest.every(child => child.tagName === 'UL' || child.tagName === 'OL')) first.replaceWith(...first.childNodes);
+  });
+  root.querySelectorAll('table').forEach(table => {
+    table.removeAttribute('style');
+    table.querySelectorAll(':scope > colgroup').forEach(group => group.remove());
+    const body = table.querySelector(':scope > tbody');
+    const first = body?.querySelector(':scope > tr');
+    if (body && first && !table.querySelector(':scope > thead') && first.children.length
+      && [...first.children].every(cell => cell.tagName === 'TH')) {
+      const head = document.createElement('thead');
+      head.append(first);
+      table.insertBefore(head, body);
     }
-    const attrs: Record<string, unknown> = {};
-    for (const [name, attrValue] of Object.entries(inner as Record<string, unknown>)) {
-      if (attrValue === null) continue;
-      if (defaults && name in defaults && stable(attrValue) === stable(defaults[name])) continue;
-      attrs[name] = authored(attrValue);
-    }
-    if (Object.keys(attrs).length) out['attrs'] = attrs;
-  }
-  return out;
+  });
+  root.querySelectorAll('th > p:only-child, td > p:only-child').forEach(paragraph => paragraph.replaceWith(...paragraph.childNodes));
+  return template.innerHTML;
 }
 
-/** Key-order-independent string form, so two equal documents compare equal. */
-function stable(value: unknown): string {
-  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
-  return '{' + Object.keys(value as object).sort()
-    .map((k) => JSON.stringify(k) + ':' + stable((value as Record<string, unknown>)[k]))
-    .join(',') + '}';
+/** Carve source for editor HTML, through the engine's HTML importer with raw HTML off. */
+export function htmlToCarve(html: string): string {
+  return importDocument(normalizeEditorHtml(html), { from: 'html', rawHtml: false }).source;
 }
 
 /**
- * What to serialize: the document as loaded when the editor still holds it, and
- * the editor's own JSON carrying the loaded envelope once it has been edited.
- *
- * Handing the serializer the ORIGINAL document while it is unedited is what
- * makes the fingerprint match: it was taken over that exact JSON, and the mounted
- * document differs from it by the schema defaults Tiptap fills in.
- *
- * After an edit the envelope still matters. Its `carveProjectedSource` is the
- * canonical serialization of the loaded document, so the serializer can diff the
- * edited document's serialization against it and apply only that difference to
- * the authored source. Dropping the envelope instead respells every construct
- * in the document on the first keystroke.
+ * The document loaded into each editor. An unedited document writes back its
+ * source byte for byte; the HTML importer only runs once the author edits it.
  */
-function withEnvelope(editor: Editor, json: JSONContent): JSONContent {
-  const entry = loaded.get(editor);
-  if (!entry) return json;
-  const unedited = stable(authored(json.content ?? []))
-    === stable(authored(entry.doc.content ?? []));
-  if (unedited) return entry.doc;
-  return { ...json, attrs: { ...(json.attrs ?? {}), ...entry.envelope } };
-}
+const loaded = new WeakMap<Editor, { doc: EditorDocument; snapshot: string }>();
 
 export function createCarveEditor(opts: CarveEditorOptions): Editor {
-  const editor: Editor = new Editor({
+  return new Editor({
     element: opts.element,
-    extensions: [CarveKit, CarveCodeHighlight],
+    extensions: EDITOR_EXTENSIONS,
     content: opts.content ?? '',
     onUpdate: ({ editor }) => {
       opts.onUpdate?.(editorToCarve(editor));
     },
   });
-  return editor;
 }
 
-/**
- * Load a bridge document into the editor, keeping its source envelope.
- *
- * Every load goes through here rather than through `setContent` directly, so
- * the previous document's envelope cannot outlive it.
- */
-export function setCarveDocument(editor: Editor, doc: JSONContent): void {
-  const envelope = envelopeOf(doc);
-  if (envelope) loaded.set(editor, { doc, envelope });
-  else loaded.delete(editor);
-  editor.commands.setContent(doc);
+/** Load a prepared document into the editor. */
+export function setCarveDocument(editor: Editor, doc: EditorDocument): void {
+  editor.commands.setContent(doc.html || '<p></p>', { emitUpdate: false });
+  loaded.set(editor, { doc, snapshot: JSON.stringify(editor.getJSON()) });
+}
+
+/** The front matter of the loaded document, or '' when it has none. */
+export function editorFrontmatter(editor: Editor): string {
+  return loaded.get(editor)?.doc.frontmatter ?? '';
+}
+
+/** Replace the front matter written ahead of the editor body. */
+export function setEditorFrontmatter(editor: Editor, frontmatter: string): void {
+  const entry = loaded.get(editor);
+  const doc = entry?.doc ?? { source: '', frontmatter: '', html: '' };
+  loaded.set(editor, { doc: { ...doc, frontmatter, source: '' }, snapshot: entry?.snapshot ?? '' });
 }
 
 /** Serialize the current editor document to Carve markup. */
 export function editorToCarve(editor: Editor): string {
-  return serializeToCarve(withEnvelope(editor, editor.getJSON()));
+  const entry = loaded.get(editor);
+  if (entry?.doc.source && JSON.stringify(editor.getJSON()) === entry.snapshot) return entry.doc.source;
+  const body = htmlToCarve(editor.getHTML());
+  const frontmatter = entry?.doc.frontmatter ?? '';
+  return frontmatter ? `${frontmatter}${body}` : body;
 }
 
-/** Toggle an ordered list, using Carve's automatic marker for a new list. */
+/** Toggle an ordered list. */
 export function toggleOrderedList(editor: Editor): boolean {
-  const removing = editor.isActive('orderedList');
-  const chain = editor.chain().focus().toggleOrderedList();
-  return removing
-    ? chain.run()
-    : chain.updateAttributes('orderedList', {
-        carveBareMarker: true,
-        carveDelim: '.',
-      }).run();
+  return editor.chain().focus().toggleOrderedList().run();
 }
 
-/** Re-serialize an arbitrary ProseMirror/Tiptap JSON doc. */
-export function jsonToCarve(json: unknown): string {
-  return serializeToCarve(json);
+/** Serialize an arbitrary ProseMirror/Tiptap JSON doc. */
+export function jsonToCarve(json: JSONContent): string {
+  return htmlToCarve(generateHTML(json, EDITOR_EXTENSIONS));
 }
