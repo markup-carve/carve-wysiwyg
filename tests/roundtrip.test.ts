@@ -14,8 +14,6 @@ import { Editor } from '@tiptap/core';
 import { carveToEditorDocument } from '../src/carve-import';
 import { EDITOR_EXTENSIONS, editorToCarve, setCarveDocument, toggleOrderedList } from '../src/editor';
 
-// The 0.1 kit (CarveKit) is gone in Carve 0.2: markup-carve/carve-grammars#906.
-const KIT_GAP = 'needs a Carve 0.2 Tiptap kit: markup-carve/carve-grammars#906';
 
 let editor: Editor;
 
@@ -115,11 +113,11 @@ describe('Carve round trip (source -> AST -> editor -> source)', () => {
 });
 
 describe('ordered-list authoring default', () => {
-  it.skip(`creates a bare-dot list while preserving explicit numbering on import (${KIT_GAP})`, () => {
-    editor.commands.setContent('<p>alpha</p><p>beta</p>');
+  it('creates a bare-dot list while preserving explicit numbering on import', () => {
+    setCarveDocument(editor, carveToEditorDocument('alpha\n\nbeta\n'));
     editor.commands.selectAll();
     toggleOrderedList(editor);
-    expect(editorToCarve(editor)).toBe('. alpha\n. beta');
+    expect(editorToCarve(editor)).toBe('. alpha\n. beta\n');
 
     expect(roundTrip('1. alpha\n2. beta')).toBe('1. alpha\n2. beta');
   });
@@ -128,8 +126,7 @@ describe('ordered-list authoring default', () => {
 describe('task-list authoring', () => {
   // The 0.2 writer ends a document with a line feed (C2-W-100).
   it('turns paragraphs into unchecked task items', () => {
-    // A fresh document goes through setCarveDocument, which owns the front matter in 0.2.
-    setCarveDocument(editor, { source: '', frontmatter: '', html: '<p>alpha</p><p>beta</p>' });
+    setCarveDocument(editor, carveToEditorDocument('alpha\n\nbeta\n'));
     editor.commands.selectAll();
     editor.commands.toggleTaskList();
     expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta\n');

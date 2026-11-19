@@ -6,7 +6,8 @@ import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { Editor } from '@tiptap/core';
 import { CarveCodeHighlight } from '../src/code-highlight';
 import { carveToEditorDocument } from '../src/carve-import';
-import { createCarveEditor, EDITOR_EXTENSIONS, editorToCarve, htmlToCarve, setCarveDocument } from '../src/editor';
+import { parse, treesEqual } from '@markup-carve/carve';
+import { createCarveEditor, EDITOR_EXTENSIONS, editorToCarve, jsonToCarve, setCarveDocument } from '../src/editor';
 import FIXTURE from './fixtures/code-highlight.crv?raw';
 
 const SOURCE = FIXTURE;
@@ -57,8 +58,8 @@ describe('code block highlighting on the editor surface', () => {
   it('round-trips js, {.diff} js and carve fences byte-identically', () => {
     const editor = mount();
     expect(editorToCarve(editor)).toBe(SOURCE);
-    // Through the HTML pivot too, so the editor document itself is checked.
-    expect(htmlToCarve(editor.getHTML())).toBe(SOURCE);
+    // Through the writer too, so the editor document itself is checked.
+    expect(treesEqual(parse(jsonToCarve(editor.getJSON())), parse(SOURCE))).toBe(true);
   });
 
   it('leaves the document JSON identical to an editor without highlighting', () => {
@@ -111,8 +112,7 @@ describe('code block highlighting on the editor surface', () => {
     expect(first?.textContent).toBe('const');
   });
 
-  // A captioned fence renders as a figure, which the stock editor schema has no node for.
-  it.skip('presents a captioned {.diff} fence as a diff (needs a Carve 0.2 Tiptap kit: markup-carve/carve-grammars#906)', () => {
+  it('presents a captioned {.diff} fence as a diff', () => {
     const editor = mount();
     setCarveDocument(editor, carveToEditorDocument('{#lst-a .diff}\n```js\n-let a = 1;\n+let a = 2;\n```\n^ Listing #: x'));
     const classes = spans(editor, 0);

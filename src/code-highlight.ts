@@ -1,11 +1,11 @@
 /**
  * Syntax highlighting for code blocks on the editor surface.
  *
- * CarveKit's code block is a custom node (language picker, raw-language and
- * title attributes) that the serializer reads by name, so swapping in
- * `extension-code-block-lowlight` would replace that node. This adds the same
- * lowlight decorations as a separate plugin instead: the schema and the
- * document JSON stay untouched, only the rendered DOM gains `hljs-*` spans.
+ * CarveKit's code block carries the fence's tree fields, which the serializer
+ * reads back, so swapping in `extension-code-block-lowlight` would replace that
+ * node. This adds the same lowlight decorations as a separate plugin instead:
+ * the schema and the document JSON stay untouched, only the rendered DOM gains
+ * `hljs-*` spans.
  */
 import { Extension } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
@@ -53,12 +53,14 @@ function push(out: Decoration[], from: number, list: Token[]): void {
 }
 
 /** A captioned fence's attribute line lives on its figure, not the code block. */
-function isDiffBlock(node: PMNode, parent: PMNode | null): boolean {
-  if (hasDiffClass(node.attrs.class)) return true;
-  if (parent?.type.name !== 'carveFigure') return false;
-  let targets = 0;
-  parent.forEach((child) => { if (child.type.name !== 'carveCaption') targets++; });
-  return targets === 1 && hasDiffClass(parent.attrs.class);
+/** The classes of a fence: the kit keeps the tree's attributes in the node's `carve` attribute. */
+function fenceClasses(node: PMNode): string {
+  const classes = (node.attrs.carve as { attrs?: { classes?: unknown } } | null)?.attrs?.classes;
+  return Array.isArray(classes) ? classes.join(' ') : '';
+}
+
+function isDiffBlock(node: PMNode): boolean {
+  return hasDiffClass(fenceClasses(node));
 }
 
 function blockDecorations(node: PMNode, start: number, isDiff: boolean, out: Decoration[]): void {
@@ -84,9 +86,9 @@ function blockDecorations(node: PMNode, start: number, isDiff: boolean, out: Dec
 
 function decorate(doc: PMNode): DecorationSet {
   const out: Decoration[] = [];
-  doc.descendants((node, pos, parent) => {
+  doc.descendants((node, pos) => {
     if (node.type.name !== 'codeBlock') return true;
-    blockDecorations(node, pos + 1, isDiffBlock(node, parent), out);
+    blockDecorations(node, pos + 1, isDiffBlock(node), out);
     return false;
   });
   return DecorationSet.create(doc, out);

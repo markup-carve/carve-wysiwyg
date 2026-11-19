@@ -2,7 +2,7 @@
  * Carve WYSIWYG app entry point.
  *
  * Layout:
- *   - left:   the Tiptap visual editor (HTML pivot, editor.ts) + a toolbar
+ *   - left:   the Tiptap visual editor (carve-grammars kit, editor.ts) + a toolbar
  *   - middle: live Carve source (read-only, updates on every edit) and an
  *             import box + "Load Carve" button (Carve -> editor round trip)
  *   - right:  rendered HTML preview (carve-js) of the current Carve source
@@ -21,8 +21,8 @@ import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
 import { csv, tsv } from '@markup-carve/carve-grammars/highlightjs/delimited.js';
 import { applyLanguageDiff } from '@markup-carve/carve-grammars/diff';
 import { lint } from '@markup-carve/carve';
-import { createCarveEditor, editorToCarve, htmlToCarve, setCarveDocument, setEditorFrontmatter, toggleOrderedList } from './editor';
-import { carveCommentCount, carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw, DIAGRAM_LANGUAGES, splitFrontmatter } from './carve-import';
+import { canonicalCarve, carveToEditorDocument, createCarveEditor, editorToCarve, insertCarve, setCarveDocument, setEditorFrontmatter, toggleOrderedList } from './editor';
+import { carveCommentCount, carveHeadingTargets, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
 import { SAMPLE } from './sample';
 import { isLintHint, lintFindingLabel, lintFindingRange } from './lint-findings';
@@ -240,8 +240,8 @@ function refreshOutputs(carve: string): void {
 
 /** Load Carve source into the editor (import direction). */
 function loadCarve(source: string): void {
-  // setCarveDocument, not setContent: it keeps the source and the front matter
-  // the HTML pivot cannot carry (editor.ts). Outputs are refreshed below.
+  // setCarveDocument, not setContent: it keeps the source, so an unedited
+  // document writes back byte for byte (editor.ts). Outputs are refreshed below.
   setCarveDocument(editor, carveToEditorDocument(source));
   loadedSource = source;
   refreshOutputs(editorToCarve(editor));
@@ -276,14 +276,9 @@ commentToggle.addEventListener('click', () => {
 editor.on('update', updateCommentToggle);
 updateCommentToggle();
 
-function insertDocument(html: string): void {
-  editor.chain().focus().insertContent(html).run();
-}
-
-/** Canonical markup the editor would write for `source`: its front matter as written, its body through the HTML pivot. */
+/** Canonical markup the editor would write for `source`. */
 function editableSource(source: string): string {
-  const doc = carveToEditorDocument(source);
-  return `${doc.frontmatter}${doc.html ? htmlToCarve(doc.html) : ''}`;
+  return canonicalCarve(source);
 }
 
 // Rich structure palette --------------------------------------------------
@@ -413,11 +408,10 @@ function insertSelectedRecipe(): void {
   if (invalid) { invalid.reportValidity(); return; }
   const source = editableSource(recipe.source(recipeValues()));
   if (recipe.id === 'metadata') {
-    // Front matter has no editor node; it replaces the one written ahead of the body.
-    setEditorFrontmatter(editor, splitFrontmatter(source).frontmatter);
-    refreshOutputs(editorToCarve(editor));
+    // A document has one front matter: the recipe replaces it rather than inserting a second.
+    setEditorFrontmatter(editor, source);
   } else {
-    insertDocument(carveToEditorDocument(source).html);
+    insertCarve(editor, source);
   }
   dialog.close();
 }
@@ -455,7 +449,7 @@ function selectedTaskItem(): { pos: number; node: ProseMirrorNode } | null {
 function syncTaskState(): void {
   const task = selectedTaskItem();
   taskControl.hidden = !task;
-  if (task) taskStateSelect.value = task.node.attrs.checked ? 'x' : (task.node.attrs.carveTaskState ?? ' ');
+  if (task) taskStateSelect.value = task.node.attrs.carve?.task?.mark ?? (task.node.attrs.checked ? 'x' : ' ');
 }
 
 taskStateSelect.addEventListener('change', () => {
@@ -466,7 +460,8 @@ taskStateSelect.addEventListener('change', () => {
     tr.setNodeMarkup(task.pos, undefined, {
       ...task.node.attrs,
       checked: state === 'x',
-      carveTaskState: state === 'x' || state === ' ' ? null : state,
+      // The kit keeps the task mark in the tree fields of the item.
+      carve: { ...task.node.attrs.carve, task: { mark: state } },
     });
     return true;
   }).run();

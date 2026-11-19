@@ -1,17 +1,18 @@
 /**
- * Import direction: Carve source -> editor HTML and preview HTML through the
+ * Import direction: Carve source -> preview HTML and document facts through the
  * Carve 0.2 engine. Keeping this seam in one module makes the app exercise the
  * same public API that downstream editors consume.
  */
 import { parse, render, tabsExtensions, tabsRenderer, type DocumentNode } from '@markup-carve/carve';
 import { codeGroup, details, presets, spoiler, withExtensions } from '@markup-carve/carve/extensions';
-import type { EditorDocument } from './editor';
 
 const BUNDLE = withExtensions(codeGroup(), details(), spoiler(), presets(), {
   extensions: tabsExtensions,
   renderers: { 'carve.tabs': tabsRenderer },
 });
 const EXTENSION_OPTIONS = { extensions: BUNDLE.extensions, renderers: BUNDLE.renderers };
+export { carveToEditorDocument } from './editor';
+
 export const DIAGRAM_LANGUAGES = new Set(['mermaid', 'graphviz', 'dot', 'd2', 'plantuml', 'wavedrom', 'abc', 'vega-lite', 'chart']);
 
 /** UTF-16 index of a UTF-8 byte offset into `source` (0.2 positions count bytes, C2-A-027). */
@@ -33,12 +34,6 @@ export function splitFrontmatter(source: string): { frontmatter: string; body: s
   const end = utf16Index(source, first.pos.endOffset);
   const split = end + (/^(?:\r\n|\n)/.exec(source.slice(end))?.[0].length ?? 0);
   return { frontmatter: source.slice(0, split), body: source.slice(split) };
-}
-
-/** Carve source prepared for the editor: the HTML pivot Tiptap parses, with the front matter held apart. */
-export function carveToEditorDocument(source: string): EditorDocument {
-  const { frontmatter, body } = splitFrontmatter(source);
-  return { source, frontmatter, html: body.trim() ? render(body, { sections: false, smartTypography: false }) : '' };
 }
 
 /** Render Carve source for the preview pane. */
