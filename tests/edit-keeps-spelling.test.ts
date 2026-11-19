@@ -1,15 +1,11 @@
 /**
- * An edit must only respell what it touched: the source envelope's projected
- * source lets the serializer merge the edit into the authored text.
+ * An edit must only respell what it touched: the kit keeps the source of every
+ * top-level block the edit left alone.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Editor } from '@tiptap/core';
-// The 0.1 kit is gone in Carve 0.2 (needs a Carve 0.2 Tiptap kit: markup-carve/carve-grammars#906); these tests pin its behavior and are
-// skipped until a 0.2 kit exists. The stubs only keep the file loadable.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { CarveKit } = {} as Record<string, any>;
 import { carveToEditorDocument } from '../src/carve-import';
-import { editorToCarve, setCarveDocument } from '../src/editor';
+import { EDITOR_EXTENSIONS, editorToCarve, setCarveDocument } from '../src/editor';
 
 const SOURCE = [
   ':: term',
@@ -33,7 +29,7 @@ let editor: Editor;
 beforeEach(() => {
   const el = document.createElement('div');
   document.body.appendChild(el);
-  editor = new Editor({ element: el, extensions: [CarveKit] });
+  editor = new Editor({ element: el, extensions: EDITOR_EXTENSIONS });
 });
 
 afterEach(() => {
@@ -49,7 +45,7 @@ function endOfText(): number {
   return end;
 }
 
-describe.skip('editing keeps the authored spelling outside the edit (needs a Carve 0.2 Tiptap kit: markup-carve/carve-grammars#906)', () => {
+describe('editing keeps the authored spelling outside the edit', () => {
   it('leaves unedited constructs untouched when text is typed at the end', () => {
     setCarveDocument(editor, carveToEditorDocument(SOURCE));
     expect(editorToCarve(editor)).toBe(SOURCE);
@@ -77,6 +73,7 @@ describe.skip('editing keeps the authored spelling outside the edit (needs a Car
     editor.commands.insertContentAt(endOfText(), '!');
     setCarveDocument(editor, carveToEditorDocument('# Fresh\n'));
     editor.commands.insertContentAt(endOfText(), '!');
-    expect(editorToCarve(editor)).toBe('# Fresh!');
+    // The edited heading is written by the engine, which spells headings with `=`.
+    expect(editorToCarve(editor)).toBe('= Fresh!\n');
   });
 });

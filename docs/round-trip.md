@@ -1,28 +1,27 @@
 # Round-trip behavior
 
-The editor runs on Carve 0.2. carve-grammars 0.2 has no Tiptap editor kit yet
-([carve-grammars#906](https://github.com/markup-carve/carve-grammars/issues/906)),
-so the data path goes through HTML:
+The editor runs on the Carve 0.2 Tiptap kit from carve-grammars
+(`@markup-carve/carve-grammars/tiptap`). The data path never goes through HTML:
 
-1. Carve source → carve-js `render` → HTML, which Tiptap parses into its
-   document.
-2. Tiptap HTML → carve-js `importDocument(html, { from: 'html', rawHtml: false })`
-   → Carve source.
+1. Carve source → carve-js `parse` → the 0.2 tree → `carveToProseMirror` →
+   the Tiptap document.
+2. Tiptap document → `serializeToCarve` → the 0.2 tree → carve-js `write` →
+   Carve source.
 
-Front matter has no HTML form. `carveToEditorDocument` splits it off where the
-engine reads it, the editor keeps it beside the document, and `editorToCarve`
-writes it back in front of the body unchanged. The **Document metadata** recipe
-replaces it.
+Every Tiptap node and mark keeps the tree fields the editor does not edit in its
+`carve` attribute (attributes, list markers, task marks, keys), and a node the
+kit has no editable form for is kept whole as an atom. The kit round-trips every
+0.2 conformance example and clause case this way.
 
 While a document is untouched, `editorToCarve` returns the loaded source byte
-for byte. After the first edit, the whole body is written by the importer in
-canonical 0.2 spelling: `=` headings, braced inline marks, a final line feed.
+for byte. After an edit, the top-level blocks the edit left alone keep their
+source; the edited blocks are written by the engine, with their original layout
+where they still stand in the same place, so fences and markers keep their
+spelling where the writer allows. A heading the author edits is written with
+`=`, the writer's only heading marker.
 
-Before the importer runs, `normalizeEditorHtml` turns Tiptap's own markup into
-what a Carve render writes: task items become `<li>` with a checkbox (their
-`data-task-state` is kept), a table's first row of header cells becomes its
-head, Tiptap's table sizing styles are dropped, and empty list items and the
-trailing empty paragraph are removed.
+HTML pasted or dropped from elsewhere goes through carve-js
+`importDocument(html, { from: 'html', rawHtml: false })` (`htmlToCarve`).
 
 ## Round-tripped through the editor
 
@@ -31,20 +30,17 @@ The automated suite covers:
 - headings, paragraphs, bold, italic, underline, strike, highlight,
   superscript, subscript, inserted and deleted text, links and inline code;
 - bullet, ordered and task lists, with every task state;
-- blockquotes and thematic breaks;
-- fenced code blocks with their language, class (`{.diff}`) and title;
+- blockquotes with captions, and thematic breaks;
+- fenced code blocks with their language, class (`{.diff}`), title and caption;
 - tables with a header row and cell alignment;
-- front matter.
-
-## Kept only while unedited
-
-Tiptap's stock schema has no node for these, so an edit anywhere in the
-document drops or flattens them: divs and admonitions, tabs, code groups,
-details and spoilers, figures and captions, definition lists, line blocks,
-math, footnotes, comments, abbreviations, link definitions, spans with
-attributes, language spans and block attribute lines. The tests that pinned the
-0.1 kit's handling of them are named skips pointing at carve-grammars#906.
+- divs and admonitions with titles and classes, figures and figure groups with
+  captions, definition lists, line blocks, inline footnotes, spans with
+  attributes and language spans;
+- front matter, and every recipe of the structure palette.
 
 The relevant coverage lives in `tests/roundtrip.test.ts`,
 `tests/authoring-roundtrip.test.ts`, `tests/authoring-constructs.test.ts`,
-`tests/code-highlight.test.ts` and `tests/toolbar.test.ts`.
+`tests/composite-figure.test.ts`, `tests/blockquote-caption.test.ts`,
+`tests/edit-keeps-spelling.test.ts`, `tests/language-attribute.test.ts`,
+`tests/code-highlight.test.ts` and `tests/toolbar.test.ts`. The kit's own suite
+in carve-grammars covers the conformance corpus.
