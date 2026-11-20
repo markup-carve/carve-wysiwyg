@@ -73,7 +73,7 @@ describe('rich authoring recipes', () => {
     expect(carveToHtmlRaw(details.source({ title: 'More', body: 'Body.' }))).toContain('<details');
   });
 
-  it.skip('links a citation to its references entry (no 0.2 citation extension yet: markup-carve/carve-js#5082)', () => {
+  it('links a citation to its references entry', () => {
     const citation = AUTHORING_RECIPES.find(recipe => recipe.id === 'citation')!;
     const html = carveToHtmlRaw(citation.source({ key: 'doe', entry: 'Doe.' }));
     expect(html).toContain('href="#ref-doe"');
