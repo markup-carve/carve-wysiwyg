@@ -3,10 +3,10 @@
  * Carve 0.2 engine. Keeping this seam in one module makes the app exercise the
  * same public API that downstream editors consume.
  */
-import { parse, render, tabsExtensions, tabsRenderer, type DocumentNode } from '@markup-carve/carve';
-import { codeGroup, details, presets, spoiler, withExtensions } from '@markup-carve/carve/extensions';
+import { parse, renderWithDocumentTransforms, tabsExtensions, tabsRenderer, type DocumentNode } from '@markup-carve/carve';
+import { citations, codeGroup, details, presets, spoiler, withExtensions } from '@markup-carve/carve/extensions';
 
-const BUNDLE = withExtensions(codeGroup(), details(), spoiler(), presets(), {
+const BUNDLE = withExtensions(citations(), codeGroup(), details(), spoiler(), presets(), {
   extensions: tabsExtensions,
   renderers: { 'carve.tabs': tabsRenderer },
 });
@@ -38,7 +38,7 @@ export function splitFrontmatter(source: string): { frontmatter: string; body: s
 
 /** Render Carve source for the preview pane. */
 export function carveToHtmlRaw(source: string): string {
-  const html = render(source, EXTENSION_OPTIONS);
+  const html = renderWithDocumentTransforms(source, BUNDLE.transforms ?? [], EXTENSION_OPTIONS).html;
   const withCodeLanguages = html.replace(
     /<pre([^>]*)><code class="language-([^"\s]+)"/g,
     '<pre$1 data-language="$2"><code class="language-$2"',
