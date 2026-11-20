@@ -20,8 +20,10 @@ where they still stand in the same place, so fences and markers keep their
 spelling where the writer allows. A heading the author edits is written with
 `=`, the writer's only heading marker.
 
-HTML pasted or dropped from elsewhere goes through carve-js
-`importDocument(html, { from: 'html', rawHtml: false })` (`htmlToCarve`).
+HTML pasted or dropped from elsewhere is parsed by the Tiptap kit's node
+rules. `htmlToCarve` runs carve-js
+`importDocument(html, { from: 'html', rawHtml: false })` for a host that wants
+the engine's importer instead; the editor does not call it on paste.
 
 ## Round-tripped through the editor
 
