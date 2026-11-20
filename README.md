@@ -11,18 +11,18 @@ HTML previews. No installation or account is required.
 
 It is built from the markup-carve org's own assets:
 
-- **carve-grammars** ships the Tiptap kit (`CarveKit`), the AST-based loader
-  (`carveToProseMirror`) and the ProseMirror -> Carve serializer
-  (`serializeToCarve`). The visual editing surface and both conversion
-  directions are driven by this public package.
-- **carve-js** (`@markup-carve/carve`) is the reference parser/renderer. It
-  powers the parser behind the shared loader and the HTML preview pane.
+- **carve-js** (`@markup-carve/carve`, Carve 0.2) is the reference
+  parser/renderer and writer. It parses the document the editor loads, writes
+  the edited tree back to Carve, and renders the preview pane.
+- **carve-grammars** supplies the Carve 0.2 Tiptap editor kit (`./tiptap`), the
+  Carve, CSV and TSV highlighters and the diff styles; see
+  [round-trip behavior](docs/round-trip.md).
 
 ## Layout
 
 Three live panes:
 
-1. **Editor** - a Tiptap editor initialized with `CarveKit`, plus a toolbar
+1. **Editor** - a Tiptap editor on the carve-grammars kit, loaded from the engine's tree, plus a toolbar
    (bold, italic, underline, strike, highlight, superscript, subscript,
    inserted and deleted text, inline code, code block, headings 1-6,
    bullet/ordered/task list, blockquote, horizontal rule, hard break, link)
@@ -30,8 +30,8 @@ Three live panes:
    tooltip shows its Carve syntax and keyboard shortcut. The toolbar's right
    side holds the **Comments** show/hide toggle, **Document metadata**,
    **Insert structure**, and **Inspector**.
-2. **Carve source** - read-only, regenerated on every edit by running
-   `serializeToCarve` on the editor's ProseMirror document; plus an import box
+2. **Carve source** - read-only, regenerated on every edit by writing the
+   editor's tree with carve-js `write`; plus an import box
    and a "Load Carve" button (Carve -> editor round trip).
 3. **HTML preview** - the rendered HTML of the current Carve source, via
    carve-js.
@@ -44,9 +44,8 @@ a collapsible **Document metadata** card for common frontmatter fields and raw
 YAML/TOML; a selection-aware attribute inspector, which also sets a task item's state
 (`[ ]`, `[x]`, `[-]`, `[_]`, `[>]`, `[?]`); searchable heading targets;
 live lint findings with source-range navigation; and an explicit
-source-normalization diff. These controls generate Carve through the same AST
-bridge as imported documents, so their output is immediately editable and
-round-trip tested.
+source-normalization diff. These controls generate Carve source, which the kit
+loads like an imported document.
 Single fenced code blocks are available directly from the **Code block** toolbar
 button with language and source fields; related multi-language examples remain
 available as **Code group** in the structure palette. Preview fences provide
@@ -61,15 +60,13 @@ for hosts to connect to their corresponding client or build-time renderer.
 Inline and display TeX are available under **Math** and rendered with KaTeX in
 the live preview.
 
-The **Comments** toggle shows how many editorial comments the document holds
-(`%%` and `%%%` comments plus inline review notes) and hides or shows them in
-the editor. Hidden comments stay in the document and in the Carve source.
+The **Comments** toggle shows how many comments the document holds (`%%` and
+`%%%` comments), which the editor holds as plain-text comment blocks.
 
 Visual/Source tabs are real keyboard- and touch-activatable controls. In edit
-mode, tables show cell boundaries and selection clearly; inline footnotes,
-cross-references, and citations open document-aware target pickers; definition
-blocks use compact editable cards; and preserved fallback nodes expose their
-exact Carve source instead of becoming dead ends.
+mode, tables show cell boundaries and selection clearly. The target pickers for
+inline footnotes, cross-references and citations and the definition cards came
+from the 0.1 Tiptap kit and have no 0.2 counterpart yet.
 The built-in starter document deliberately exercises frontmatter, an
 admonition, a captioned table, tabs, a cross-reference, and a footnote so the
 hosted sandbox demonstrates these capabilities without setup.
@@ -98,13 +95,13 @@ hosted sandbox demonstrates these capabilities without setup.
 
 ## Fidelity
 
-Rich structures remain editable across Carve → visual editor → Carve round
-trips. Syntax not yet represented visually is retained visibly instead of
-being silently discarded. The source pane and normalization diff make any
-canonical rewrite explicit.
+An unedited document is written back byte for byte. Once it is edited, the
+blocks the edit left alone keep their source and the edited ones are written by
+the engine's writer; the kit keeps every 0.2 construct as structure. The source
+pane and normalization diff make every rewrite explicit.
 
-See [docs/round-trip.md](docs/round-trip.md) for covered constructs and the
-known delimiter limitation.
+See [docs/round-trip.md](docs/round-trip.md) for what round-trips and what does
+not.
 
 ## Development
 

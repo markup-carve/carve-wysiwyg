@@ -4,13 +4,13 @@ title: Rich visual authoring
 lang: en
 ---
 
-# Carve WYSIWYG
+= Carve WYSIWYG
 
 Use *Insert structure* or press Alt+Shift+K to add Carve-native content without
 memorizing its source syntax. Select a structure and open *Inspector* to edit
 its identifiers, classes, labels, and metadata.
 
-The standard toolbar still handles /italic/, _underline_, ~struck~, inline
+The standard toolbar still handles /italic/, {_underline_}, {~struck~}, inline
 \`code\`, [links](https://github.com/markup-carve), quotes, and lists:
 
 This sentence has an editorial note{# Clarify this claim before publishing. #}.
@@ -19,7 +19,7 @@ The annotation controls remain visible while you write. %% Inline review note
 %% Block comments now read as review cards and can be hidden from the toolbar.
 
 Direct inline editing is also available for {% a delimited review note %},
-!\`/kaet/\` literals, \`<kbd>\`{=html} raw content, {~draft~>final~}
+!\`/kaet/\` literals, \`<kbd>\`{=html} raw content, {-draft-}{+final+}
 substitutions, $\`x^2\` math, @ada mentions, #review tags, and :rocket: symbols.
 
 \`\`\`javascript
@@ -29,6 +29,7 @@ const message = 'The language control follows this full-width code.';
 > Rich structure and familiar editing belong in the same surface.
 
 - bullet item
+
 . bare-dot ordered item
 
 - [ ] Plan the next edit
@@ -44,7 +45,7 @@ alongside the visual document.
 :::
 
 {#structured-content}
-## Structured content
+== Structured content
 
 \`\`\`mermaid
 flowchart LR
@@ -58,16 +59,17 @@ flowchart LR
 | Containers and metadata | Inspectable |
 ^ Authoring coverage
 
-|={>} 2-col header|<|={>} header|
-| Spanning table cells |<| Distinct markers |
+|={>} 2-col header |= < |={>} header |
+| Spanning table cells | < | Distinct markers |
 
 :::: tabs
-:::: tab [Visual]
+::: tab "Visual"
 Author rich structures with contextual controls.
-::::
-:::: tab [Source]
+:::
+
+::: tab "Source"
 Inspect the exact Carve output at any time.
-::::
+:::
 ::::
 
 See </#structured-content> for the target-aware cross-reference in action, and

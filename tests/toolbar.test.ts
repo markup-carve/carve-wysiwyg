@@ -5,14 +5,12 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import indexHtml from '../index.html?raw';
 import { Editor } from '@tiptap/core';
-import { CarveKit } from '@markup-carve/carve-grammars/tiptap';
-import { CarveCodeHighlight } from '../src/code-highlight';
-import { editorToCarve, setCarveDocument } from '../src/editor';
+import { EDITOR_EXTENSIONS, editorToCarve, setCarveDocument } from '../src/editor';
 import { carveToEditorDocument } from '../src/carve-import';
 
 const editor = new Editor({
   element: document.createElement('div'),
-  extensions: [CarveKit, CarveCodeHighlight],
+  extensions: EDITOR_EXTENSIONS,
 });
 afterAll(() => editor.destroy());
 
@@ -61,8 +59,9 @@ describe('toolbar tooltips', () => {
 });
 
 describe('marks the new toolbar buttons toggle', () => {
+  // 0.2 writes a highlight braced (U-067), a heading with `=` (C2-W-035) and a final line feed (C2-W-100).
   it.each([
-    ['highlight', '=word='],
+    ['highlight', '{=word=}'],
     ['superscript', '{^word^}'],
     ['subscript', '{,word,}'],
     ['carveInsert', '{+word+}'],
@@ -71,13 +70,13 @@ describe('marks the new toolbar buttons toggle', () => {
     setCarveDocument(editor, carveToEditorDocument('a word b'));
     editor.chain().setTextSelection({ from: 3, to: 7 }).toggleMark(mark).run();
     expect(editor.isActive(mark)).toBe(true);
-    expect(editorToCarve(editor)).toBe(`a ${expected} b`);
+    expect(editorToCarve(editor)).toBe(`a ${expected} b\n`);
   });
 
   it.each([3, 4, 5, 6])('heading level %i serializes', level => {
     setCarveDocument(editor, carveToEditorDocument('Title'));
     editor.chain().setTextSelection(2).toggleHeading({ level: level as 3 | 4 | 5 | 6 }).run();
-    expect(editorToCarve(editor)).toBe(`${'#'.repeat(level)} Title`);
+    expect(editorToCarve(editor)).toBe(`${'='.repeat(level)} Title\n`);
   });
 
   it('writes an inserted thematic break as ***', () => {

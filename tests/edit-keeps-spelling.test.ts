@@ -1,12 +1,11 @@
 /**
- * An edit must only respell what it touched: the source envelope's projected
- * source lets the serializer merge the edit into the authored text.
+ * An edit must only respell what it touched: the kit keeps the source of every
+ * top-level block the edit left alone.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Editor } from '@tiptap/core';
-import { CarveKit } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
-import { editorToCarve, setCarveDocument } from '../src/editor';
+import { EDITOR_EXTENSIONS, editorToCarve, setCarveDocument } from '../src/editor';
 
 const SOURCE = [
   ':: term',
@@ -30,7 +29,7 @@ let editor: Editor;
 beforeEach(() => {
   const el = document.createElement('div');
   document.body.appendChild(el);
-  editor = new Editor({ element: el, extensions: [CarveKit] });
+  editor = new Editor({ element: el, extensions: EDITOR_EXTENSIONS });
 });
 
 afterEach(() => {
@@ -74,6 +73,7 @@ describe('editing keeps the authored spelling outside the edit', () => {
     editor.commands.insertContentAt(endOfText(), '!');
     setCarveDocument(editor, carveToEditorDocument('# Fresh\n'));
     editor.commands.insertContentAt(endOfText(), '!');
-    expect(editorToCarve(editor)).toBe('# Fresh!');
+    // The edited heading is written by the engine, which spells headings with `=`.
+    expect(editorToCarve(editor)).toBe('= Fresh!\n');
   });
 });

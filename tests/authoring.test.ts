@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { parse } from '@markup-carve/carve';
 import { AUTHORING_RECIPES, lineDiff } from '../src/authoring';
 import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw } from '../src/carve-import';
+
 
 describe('rich authoring recipes', () => {
   it('has a unique, parseable recipe for every advertised structure family', () => {
@@ -20,9 +22,7 @@ describe('rich authoring recipes', () => {
     for (const recipe of AUTHORING_RECIPES) {
       const values = Object.fromEntries(recipe.fields.map(field => [field.name, field.value]));
       const source = recipe.source(values);
-      const doc = carveToEditorDocument(source);
-      expect(doc.type, recipe.id).toBe('doc');
-      expect(doc.content?.length, recipe.id).toBeGreaterThan(0);
+      expect(parse(source).children.length, recipe.id).toBeGreaterThan(0);
     }
   });
 
@@ -43,7 +43,7 @@ describe('rich authoring recipes', () => {
       const values = Object.fromEntries(recipe.fields.map(field => [field.name, field.value]));
       const source = recipe.source(values);
       const normalized = carveToEditorDocument(source);
-      expect(normalized.type, recipe.id).toBe('doc');
+      expect(normalized.source, recipe.id).toBe(source);
       if (recipe.id === 'code-block' || recipe.id.startsWith('diagram-')) {
         expect(source, recipe.id).toMatch(/^`{3,}[^ ]/);
       }
@@ -56,17 +56,24 @@ describe('rich authoring recipes', () => {
 
   it('keeps hostile titles and multiline definition bodies inside their structures', () => {
     const note = AUTHORING_RECIPES.find(recipe => recipe.id === 'note')!;
-    const noteDoc = carveToEditorDocument(note.source({ title: 'He said "hi"', body: 'before\n:::\nafter' }));
-    expect(noteDoc.content?.[0]?.type).toBe('carveDiv');
+    const noteDoc = carveToEditorDocument(note.source({ title: 'He said "hi"', body: 'before\n:::\nafter' })).content;
+    expect(noteDoc.content?.[0]?.type).toBe('carveAdmonition');
+    expect(noteDoc.content?.[0]?.content?.[0]?.type).toBe('carveTitle');
+    expect(JSON.stringify(noteDoc.content?.[0]?.content?.[0])).toContain('He said');
+    expect(JSON.stringify(noteDoc.content?.[0]?.content?.slice(1))).toContain('after');
 
     const footnote = AUTHORING_RECIPES.find(recipe => recipe.id === 'footnote')!;
-    const footnoteDoc = carveToEditorDocument(footnote.source({ label: 'n', body: 'First.\n\nSecond.' }));
-    expect(footnoteDoc.content?.some(node => node.type === 'carveFootnoteDefinition')).toBe(true);
+    const footnoteDoc = carveToEditorDocument(footnote.source({ label: 'n', body: 'First.\n\nSecond.' })).content;
+    const definition = footnoteDoc.content?.find(node => node.type === 'carveFootnote');
+    expect(definition?.content?.map(node => node.type)).toEqual(['paragraph', 'paragraph']);
   });
 
   it('renders optional-extension recipes with their semantic HTML transforms', () => {
     const details = AUTHORING_RECIPES.find(recipe => recipe.id === 'details')!;
     expect(carveToHtmlRaw(details.source({ title: 'More', body: 'Body.' }))).toContain('<details');
+  });
+
+  it('links a citation to its references entry', () => {
     const citation = AUTHORING_RECIPES.find(recipe => recipe.id === 'citation')!;
     const html = carveToHtmlRaw(citation.source({ key: 'doe', entry: 'Doe.' }));
     expect(html).toContain('href="#ref-doe"');

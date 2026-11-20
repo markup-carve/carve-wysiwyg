@@ -2,12 +2,11 @@
  * Carve WYSIWYG app entry point.
  *
  * Layout:
- *   - left:   the Tiptap visual editor (CarveKit) + a toolbar
+ *   - left:   the Tiptap visual editor (carve-grammars kit, editor.ts) + a toolbar
  *   - middle: live Carve source (read-only, updates on every edit) and an
  *             import box + "Load Carve" button (Carve -> editor round trip)
  *   - right:  rendered HTML preview (carve-js) of the current Carve source
  */
-import '@markup-carve/carve-grammars/tiptap/editor.css';
 import '@markup-carve/carve-grammars/diff/carve-diff.css';
 import '@markup-carve/carve-css';
 import 'highlight.js/styles/github-dark.css';
@@ -15,25 +14,18 @@ import '@markup-carve/carve-grammars/shiki/table-tokens.css';
 import 'katex/dist/katex.min.css';
 import './style.css';
 import { Editor } from '@tiptap/core';
-import type { JSONContent } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import hljs from 'highlight.js/lib/common';
 import katex from 'katex';
 import carveHighlight from '@markup-carve/carve-grammars/highlightjs/carve.js';
 import { csv, tsv } from '@markup-carve/carve-grammars/highlightjs/delimited.js';
 import { applyLanguageDiff } from '@markup-carve/carve-grammars/diff';
-import { lintCarve } from '@markup-carve/carve';
-// CarveKit registers these extensions at runtime from a plain-JS package.
-// Import their declaration augmentations so chained toolbar commands remain
-// visible to TypeScript as well.
-import type {} from '@tiptap/starter-kit';
-import type {} from '@tiptap/extension-link';
-import type {} from '@tiptap/extension-underline';
-import { createCarveEditor, editorToCarve, jsonToCarve, setCarveDocument, toggleOrderedList } from './editor';
-import { carveHeadingTargets, carveToEditorDocument, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
+import { lint } from '@markup-carve/carve';
+import { canonicalCarve, carveToEditorDocument, createCarveEditor, editorToCarve, insertCarve, setCarveDocument, setEditorFrontmatter, toggleOrderedList, withTreeAttributes } from './editor';
+import { carveCommentCount, carveHeadingTargets, carveToHtmlRaw, DIAGRAM_LANGUAGES } from './carve-import';
 import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
 import { SAMPLE } from './sample';
-import { isLintHint, lintFindingLabel } from './lint-findings';
+import { isLintHint, lintFindingLabel, lintFindingRange } from './lint-findings';
 import { isDiffPre } from './diff-fence';
 
 hljs.registerLanguage('csv', csv);
@@ -153,7 +145,7 @@ function refreshOutputs(carve: string): void {
   const revision = ++previewRevision;
   sourceEl.value = carve;
   $('#diff-output').textContent = lineDiff(loadedSource, carve);
-  const findings = lintCarve(carve);
+  const findings = lint(carve);
   const lintEl = $('#lint-results');
   lintEl.replaceChildren();
   if (!findings.length) {
@@ -167,10 +159,11 @@ function refreshOutputs(carve: string): void {
       if (isLintHint(finding)) item.className = 'lint-hint';
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = lintFindingLabel(finding);
+      button.textContent = lintFindingLabel(finding, carve);
       button.addEventListener('click', () => {
+        const range = lintFindingRange(finding, carve);
         sourceEl.focus();
-        sourceEl.setSelectionRange(finding.start ?? 0, finding.end ?? finding.start ?? 0);
+        sourceEl.setSelectionRange(range.start, range.end);
       });
       item.append(button);
       lintEl.append(item);
@@ -247,9 +240,8 @@ function refreshOutputs(carve: string): void {
 
 /** Load Carve source into the editor (import direction). */
 function loadCarve(source: string): void {
-  // setCarveDocument, not setContent: the bridge's source envelope rides on
-  // the document's own attributes, which setContent does not carry (editor.ts).
-  // emitUpdate defaults to false; we refresh the outputs explicitly below.
+  // setCarveDocument, not setContent: it keeps the source, so an unedited
+  // document writes back byte for byte (editor.ts). Outputs are refreshed below.
   setCarveDocument(editor, carveToEditorDocument(source));
   loadedSource = source;
   refreshOutputs(editorToCarve(editor));
@@ -266,12 +258,7 @@ const commentToggle = $('#toggle-comments') as HTMLButtonElement;
 let commentsVisible = true;
 
 function commentCount(): number {
-  let count = 0;
-  editor.state.doc.descendants(node => {
-    if (node.type.name === 'carveComment' || node.type.name === 'carveCommentInline') count += 1;
-    count += node.marks.filter(mark => mark.type.name === 'carveCriticComment').length;
-  });
-  return count;
+  return carveCommentCount(editorToCarve(editor));
 }
 
 function updateCommentToggle(): void {
@@ -289,15 +276,9 @@ commentToggle.addEventListener('click', () => {
 editor.on('update', updateCommentToggle);
 updateCommentToggle();
 
-function insertDocument(doc: JSONContent): void {
-  const content = doc.content ?? [];
-  editor.chain().focus().insertContent(content).run();
-}
-
-/** Canonical markup represented by the editable nodes, without a source envelope. */
+/** Canonical markup the editor would write for `source`. */
 function editableSource(source: string): string {
-  const doc = carveToEditorDocument(source);
-  return jsonToCarve({ type: 'doc', content: doc.content ?? [] });
+  return canonicalCarve(source);
 }
 
 // Rich structure palette --------------------------------------------------
@@ -426,20 +407,11 @@ function insertSelectedRecipe(): void {
   const invalid = recipeFields.querySelector<HTMLInputElement>(':invalid');
   if (invalid) { invalid.reportValidity(); return; }
   const source = editableSource(recipe.source(recipeValues()));
-  const doc = carveToEditorDocument(source);
   if (recipe.id === 'metadata') {
-    const metadata = doc.content?.[0];
-    const first = editor.state.doc.firstChild;
-    if (metadata && first?.type.name === 'carveFrontmatter') {
-      editor.commands.command(({ tr }) => {
-        tr.replaceWith(0, first.nodeSize, editor.schema.nodeFromJSON(metadata));
-        return true;
-      });
-    } else {
-      editor.commands.insertContentAt(0, doc.content ?? []);
-    }
+    // A document has one front matter: the recipe replaces it rather than inserting a second.
+    setEditorFrontmatter(editor, source);
   } else {
-    insertDocument(doc);
+    insertCarve(editor, source);
   }
   dialog.close();
 }
@@ -477,7 +449,7 @@ function selectedTaskItem(): { pos: number; node: ProseMirrorNode } | null {
 function syncTaskState(): void {
   const task = selectedTaskItem();
   taskControl.hidden = !task;
-  if (task) taskStateSelect.value = task.node.attrs.checked ? 'x' : (task.node.attrs.carveTaskState ?? ' ');
+  if (task) taskStateSelect.value = task.node.attrs.carve?.task?.mark ?? (task.node.attrs.checked ? 'x' : ' ');
 }
 
 taskStateSelect.addEventListener('change', () => {
@@ -488,7 +460,8 @@ taskStateSelect.addEventListener('change', () => {
     tr.setNodeMarkup(task.pos, undefined, {
       ...task.node.attrs,
       checked: state === 'x',
-      carveTaskState: state === 'x' || state === ' ' ? null : state,
+      // The kit keeps the task mark in the tree fields of the item.
+      carve: { ...task.node.attrs.carve, task: { mark: state } },
     });
     return true;
   }).run();
@@ -510,13 +483,18 @@ function inspectSelection(): void {
       && !['carveAttrOrder', 'carveKeyValues', 'items', 'carveTaskState'].includes(name)
       && (value == null || ['string', 'number', 'boolean'].includes(typeof value)),
   );
+  // The kit keeps a node's `{#id .class}` in the tree attributes of its `carve` attribute.
+  const treeAttrs = (node.attrs.carve as { attrs?: { id?: string; classes?: string[] } } | null)?.attrs;
+  if ('carve' in node.attrs) {
+    entries.unshift(['carve:class', treeAttrs?.classes?.join(' ') ?? null], ['carve:id', treeAttrs?.id ?? null]);
+  }
   if (!entries.length) {
     $('#inspector-help').textContent = `${inspectedType} has no editable attributes.`;
     return;
   }
   entries.forEach(([name, value]) => {
     const label = document.createElement('label');
-    label.textContent = name;
+    label.textContent = name.replace(/^carve:/, '');
     if (name === 'textAlign') {
       const select = document.createElement('select');
       select.name = name;
@@ -551,7 +529,18 @@ function inspectSelection(): void {
 inspectorFields.addEventListener('submit', event => {
   event.preventDefault();
   const attrs: Record<string, unknown> = {};
-  inspectorFields.querySelectorAll<HTMLInputElement>('input').forEach(input => {
+  const id = inspectorFields.querySelector<HTMLInputElement>('input[name="carve:id"]');
+  const classes = inspectorFields.querySelector<HTMLInputElement>('input[name="carve:class"]');
+  if (id && classes) {
+    const { $from } = editor.state.selection;
+    for (let depth = $from.depth; depth >= 0; depth -= 1) {
+      const node = $from.node(depth);
+      if (node.type.name !== inspectedType) continue;
+      attrs.carve = withTreeAttributes(node.attrs.carve as Record<string, unknown> | null, id.value, classes.value);
+      break;
+    }
+  }
+  inspectorFields.querySelectorAll<HTMLInputElement>('input:not([name^="carve:"])').forEach(input => {
     attrs[input.name] = input.value === '' ? null
       : input.dataset.kind === 'boolean' ? input.value === 'true'
       : input.dataset.kind === 'number' ? Number(input.value) : input.value;

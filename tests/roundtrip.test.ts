@@ -11,16 +11,16 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
-import { CarveKit } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
-import { editorToCarve, setCarveDocument, toggleOrderedList } from '../src/editor';
+import { EDITOR_EXTENSIONS, editorToCarve, setCarveDocument, toggleOrderedList, withTreeAttributes } from '../src/editor';
+
 
 let editor: Editor;
 
 beforeAll(() => {
   const el = document.createElement('div');
   document.body.appendChild(el);
-  editor = new Editor({ element: el, extensions: [CarveKit] });
+  editor = new Editor({ element: el, extensions: EDITOR_EXTENSIONS });
 });
 
 afterAll(() => {
@@ -114,28 +114,29 @@ describe('Carve round trip (source -> AST -> editor -> source)', () => {
 
 describe('ordered-list authoring default', () => {
   it('creates a bare-dot list while preserving explicit numbering on import', () => {
-    editor.commands.setContent('<p>alpha</p><p>beta</p>');
+    setCarveDocument(editor, carveToEditorDocument('alpha\n\nbeta\n'));
     editor.commands.selectAll();
     toggleOrderedList(editor);
-    expect(editorToCarve(editor)).toBe('. alpha\n. beta');
+    expect(editorToCarve(editor)).toBe('. alpha\n. beta\n');
 
     expect(roundTrip('1. alpha\n2. beta')).toBe('1. alpha\n2. beta');
   });
 });
 
 describe('task-list authoring', () => {
+  // The 0.2 writer ends a document with a line feed (C2-W-100).
   it('turns paragraphs into unchecked task items', () => {
-    editor.commands.setContent('<p>alpha</p><p>beta</p>');
+    setCarveDocument(editor, carveToEditorDocument('alpha\n\nbeta\n'));
     editor.commands.selectAll();
     editor.commands.toggleTaskList();
-    expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta');
+    expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta\n');
   });
 
   it('converts a bullet list in place instead of nesting it', () => {
     setCarveDocument(editor, carveToEditorDocument('- alpha\n- beta'));
     editor.commands.selectAll();
     editor.commands.toggleTaskList();
-    expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta');
+    expect(editorToCarve(editor)).toBe('- [ ] alpha\n- [ ] beta\n');
   });
 });
 
@@ -175,5 +176,17 @@ describe('the source envelope survives a mount', () => {
     // Without this the two cases above would pass for a serializer that
     // returned the loaded source unconditionally, which is not preservation.
     expect(out).not.toBe('{#fig-x}\n::: note\nBody.\n:::\n');
+  });
+});
+
+describe('inspector tree attributes', () => {
+  it('sets and clears a fence id and class through the kit attribute', () => {
+    setCarveDocument(editor, carveToEditorDocument('{.diff title=a}\n```js\nx\n```\n'));
+    editor.commands.setTextSelection(2);
+    const node = editor.state.selection.$from.parent;
+    editor.commands.updateAttributes('codeBlock', { carve: withTreeAttributes(node.attrs.carve, 'lst', 'diff wide') });
+    expect(editorToCarve(editor)).toBe('{#lst .diff .wide title=a}\n```js\nx\n```\n');
+    editor.commands.updateAttributes('codeBlock', { carve: withTreeAttributes(editor.state.selection.$from.parent.attrs.carve, '', '') });
+    expect(editorToCarve(editor)).toBe('{title=a}\n```js\nx\n```\n');
   });
 });

@@ -471,6 +471,9 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
   color: #805000;
 }
 .editor-surface.comments-hidden .ProseMirror pre[data-carve-comment],
+.editor-surface.comments-hidden .ProseMirror pre[data-carve-type="comment"],
+.editor-surface.comments-hidden .ProseMirror span.carve-inline-comment,
+.editor-surface.comments-hidden .ProseMirror span.carve-inline-critic-comment,
 .editor-surface.comments-hidden .ProseMirror span[data-carve-comment-inline],
 .editor-surface.comments-hidden .ProseMirror .critic-comment {
   display: none;
