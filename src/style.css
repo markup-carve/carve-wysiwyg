@@ -365,6 +365,11 @@ dialog::backdrop { background: rgba(0, 0, 0, .72); }
 .lint-results button { border: 0; background: transparent; color: var(--danger); text-align: left; cursor: pointer; }
 .lint-results .lint-hint button { color: var(--muted); }
 .lint-ok { color: var(--success); }
+.import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.import-actions > button:not(.primary) { margin-top: .5rem; padding: .5rem .8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; }
+.upgrade-offer { margin-top: .75rem; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: 6px; }
+.upgrade-offer p { margin: 0 0 .25rem; }
+.upgrade-offer .lint-results li { color: var(--muted); }
 
 @media (max-width: 600px) { .recipe-list { grid-template-columns: 1fr; } }
 

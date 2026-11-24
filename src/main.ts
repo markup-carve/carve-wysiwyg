@@ -27,6 +27,7 @@ import { AUTHORING_RECIPES, lineDiff, recipeById } from './authoring';
 import { SAMPLE } from './sample';
 import { isLintHint, lintFindingLabel, lintFindingRange } from './lint-findings';
 import { isDiffPre } from './diff-fence';
+import { upgradeOffer, type UpgradeOffer } from './upgrade-offer';
 
 hljs.registerLanguage('csv', csv);
 hljs.registerLanguage('tsv', tsv);
@@ -657,9 +658,54 @@ editor.on('selectionUpdate', updateToolbarState);
 editor.on('transaction', updateToolbarState);
 updateToolbarState();
 
+const upgradeOfferEl = $('#upgrade-offer');
+const upgradeApply = $('#upgrade-apply') as HTMLButtonElement;
+let pendingUpgrade: UpgradeOffer | null = null;
+let upgradeRequest = 0;
+
+function closeUpgradeOffer(): void {
+  upgradeRequest++;
+  pendingUpgrade = null;
+  upgradeOfferEl.hidden = true;
+}
+
 $('#load-carve').addEventListener('click', () => {
+  closeUpgradeOffer();
   loadCarve(importEl.value);
 });
+
+// Runs only on request: the upgrade reads every input as 0.1 and would escape a 0.2 `=` heading.
+$('#upgrade-carve').addEventListener('click', async () => {
+  const request = ++upgradeRequest;
+  const source = importEl.value;
+  const { upgrade } = await import('@markup-carve/carve/upgrade');
+  if (request !== upgradeRequest) return;
+  const offer = upgradeOffer(upgrade(source));
+  pendingUpgrade = offer?.writable ? offer : null;
+  $('#upgrade-summary').textContent = !offer
+    ? 'The upgrade changes nothing: this source reads the same in Carve 0.2.'
+    : offer.writable
+      ? 'The upgrade rewrites this Carve 0.1 source.'
+      : offer.output !== source
+        ? 'The upgrade could not verify its output. Review these rows and fix the source by hand:'
+        : 'The upgrade rewrites nothing, but these rows need a look by hand:';
+  $('#upgrade-rows').replaceChildren(...(offer?.rows ?? []).map(row => {
+    const item = document.createElement('li');
+    item.textContent = row;
+    return item;
+  }));
+  upgradeApply.hidden = !pendingUpgrade;
+  upgradeOfferEl.hidden = false;
+});
+
+upgradeApply.addEventListener('click', () => {
+  if (!pendingUpgrade) return;
+  importEl.value = pendingUpgrade.output;
+  closeUpgradeOffer();
+  loadCarve(importEl.value);
+});
+$('#upgrade-dismiss').addEventListener('click', closeUpgradeOffer);
+importEl.addEventListener('input', closeUpgradeOffer);
 
 // Initial content ----------------------------------------------------------
 importEl.value = SAMPLE;
