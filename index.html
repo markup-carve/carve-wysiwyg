@@ -83,7 +83,18 @@
         <ol id="lint-results" class="lint-results" aria-live="polite"></ol>
         <h2>Import Carve</h2>
         <textarea id="carve-import" class="code-pane" placeholder="Paste Carve source here..."></textarea>
-        <button id="load-carve" class="primary">Load Carve &rarr; editor</button>
+        <div class="import-actions">
+          <button id="load-carve" class="primary">Load Carve &rarr; editor</button>
+          <button id="upgrade-carve" type="button">Upgrade from Carve 0.1</button>
+        </div>
+        <section id="upgrade-offer" class="upgrade-offer" hidden aria-live="polite">
+          <p id="upgrade-summary"></p>
+          <ol id="upgrade-rows" class="lint-results"></ol>
+          <div class="import-actions">
+            <button id="upgrade-apply" type="button" class="primary">Load upgraded source</button>
+            <button id="upgrade-dismiss" type="button">Cancel</button>
+          </div>
+        </section>
       </section>
 
       <section class="pane">

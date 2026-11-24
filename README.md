@@ -31,8 +31,9 @@ Three live panes:
    side holds the **Comments** show/hide toggle, **Document metadata**,
    **Insert structure**, and **Inspector**.
 2. **Carve source** - read-only, regenerated on every edit by writing the
-   editor's tree with carve-js `write`; plus an import box
-   and a "Load Carve" button (Carve -> editor round trip).
+   editor's tree with carve-js `write`; plus an import box,
+   a "Load Carve" button (Carve -> editor round trip), and an
+   "Upgrade from Carve 0.1" button (see below).
 3. **HTML preview** - the rendered HTML of the current Carve source, via
    carve-js.
 
@@ -59,6 +60,15 @@ lazily in this demo; the other formats demonstrate Carve's hydration elements
 for hosts to connect to their corresponding client or build-time renderer.
 Inline and display TeX are available under **Math** and rendered with KaTeX in
 the live preview.
+
+**Upgrade from Carve 0.1** runs the carve-js 0.1 to 0.2 upgrade
+(`@markup-carve/carve/upgrade`) on the import box and lists each row of its
+report, such as `Line 4 · U-065: bare underline put in braces`. **Load upgraded
+source** replaces the import box with the upgraded text and loads it; **Cancel**
+leaves the source alone. When the upgrade rewrites nothing (a row that needs a
+person) or cannot verify its output, only the rows are shown. The upgrade reads
+every input as 0.1, so it runs only on request: on a 0.2 document it would
+escape a `=` heading. The upgrade code loads the first time the button is used.
 
 The **Comments** toggle shows how many comments the document holds (`%%` and
 `%%%` comments), which the editor holds as plain-text comment blocks.
