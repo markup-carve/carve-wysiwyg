@@ -13,11 +13,11 @@ npm run check:pins
 
 ## Dependency pins
 
-On `next2` the three Carve packages are pinned to `github:owner/repo#sha`
-commits on their own `next2` branches, since Carve 0.2 is not published yet:
+On `main` the three Carve packages are pinned to `github:owner/repo#sha`
+commits on their own `main` branches, since Carve 0.2 is not published yet:
 `@markup-carve/carve` (carve-js), `@markup-carve/carve-grammars` and
-`@markup-carve/carve-css`. On `main` they are published npm version ranges, and
-a commit pin there must be merged on the repository's `main`.
+`@markup-carve/carve-css`. The `0.1` branch keeps the published 0.1 npm
+version ranges.
 
 `npm run check:pins` and `.github/workflows/pins.yml` (on pull requests that
 touch a pin) verify the pins. A published carve-grammars range must install
