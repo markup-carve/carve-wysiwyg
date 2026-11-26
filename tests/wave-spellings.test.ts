@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { lintCarve } from '@markup-carve/carve';
+import { lint } from '@markup-carve/carve';
 import { AUTHORING_RECIPES } from '../src/authoring';
 import { SAMPLE } from '../src/sample';
 import { isLintHint, lintFindingLabel } from '../src/lint-findings';
 
-const rules = (source: string) => lintCarve(source).map(finding => finding.rule);
+// A 0.2 lint finding names its rule in `code` (C2-W-103).
+// deprecated-cell-alignment is an upgrade-only rule, so the check runs lint's upgrade set.
+const rules = (source: string) => lint(source, { upgrade: true }).map(finding => finding.code);
 
 describe('current Carve spellings', () => {
   it('writes the starter document without deprecated cell alignment', () => {
@@ -19,16 +21,18 @@ describe('current Carve spellings', () => {
 
 describe('lint panel labels', () => {
   it('marks a Hint finding as advisory', () => {
-    const hint = lintCarve('Above\n\n---\n\nBelow\n').find(finding => finding.rule === 'thematic-break-spelling');
+    const source = 'Above\n\nText {.x} here.\n';
+    const hint = lint(source).find(finding => finding.code === 'unattached-inline-attribute');
     expect(hint).toBeDefined();
     expect(isLintHint(hint!)).toBe(true);
-    expect(lintFindingLabel(hint!)).toMatch(/^Line 3 · Hint · thematic-break-spelling: /);
+    expect(lintFindingLabel(hint!, source)).toMatch(/^Line 3 · Hint · unattached-inline-attribute: /);
   });
 
   it('leaves a warning unmarked', () => {
-    const warning = lintCarve('|=< A |\n| b |\n').find(finding => finding.rule === 'deprecated-cell-alignment');
+    const source = 'See [x](#nope).\n';
+    const warning = lint(source).find(finding => finding.code === 'broken-fragment-link');
     expect(warning).toBeDefined();
     expect(isLintHint(warning!)).toBe(false);
-    expect(lintFindingLabel(warning!)).toMatch(/^Line 1 · deprecated-cell-alignment: /);
+    expect(lintFindingLabel(warning!, source)).toMatch(/^Line 1 · broken-fragment-link: /);
   });
 });

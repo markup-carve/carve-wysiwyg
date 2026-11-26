@@ -163,15 +163,16 @@ async function compare(repo, base, head) {
 
 /**
  * Checks for a `github:owner/repo#sha` pin: the lockfile installs the pinned
- * commit, the commit is on the default branch, and how far that branch has
- * moved past it.
+ * commit, the commit is on the default branch (or on `CARVE_PIN_BRANCH`), and
+ * how far that branch has moved past it.
  */
 async function checkGitPin(name, pin, locked) {
   if (!locked || locked.sha !== pin.sha) {
     errors.push(`${name}: package.json pins ${pin.sha}, the lockfile installs ${locked?.sha ?? 'a non-git build'}.`);
     return;
   }
-  const { default_branch: branch } = await api(`/repos/${pin.repo}`);
+  // A port branch (next2) pins its dependencies' branch of the same name.
+  const branch = process.env.CARVE_PIN_BRANCH || (await api(`/repos/${pin.repo}`)).default_branch;
   const range = await compare(pin.repo, pin.sha, branch);
   if (range.status === 'diverged' || range.behind_by > 0) {
     errors.push(
@@ -283,7 +284,11 @@ if (!engineLocked) {
         `${GRAMMARS} is pinned to a build written against spec ${grammarsSpec.slice(0, 12)}, ` +
         `which is ${range.ahead_by} commit(s) behind the spec ${engineSpec.slice(0, 12)} that the installed ` +
         `${ENGINE} build was written against. The grammar cannot represent what the engine parses.`;
-      if (grammarsOwnEngine?.sha === engineLocked.sha) {
+      if (!(await packageJsonAt(grammarsPin.repo, grammarsPin.sha)).dependencies?.[ENGINE]) {
+        // A 0.2 grammar build bundles no engine and this app hands it no source to
+        // parse, only code to highlight (markup-carve/carve-grammars#909).
+        warnings.push(`${message} ${GRAMMARS} bundles no engine, so the gap affects highlighting only.`);
+      } else if (grammarsOwnEngine?.sha === engineLocked.sha) {
         warnings.push(
           `${message} The installed engine is ${engineLocked.sha.slice(0, 12)}, the commit ${GRAMMARS} pins ` +
             'for its own loader, so closing the gap is a carve-grammars change and not one this repository can make.',

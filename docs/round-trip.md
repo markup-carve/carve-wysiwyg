@@ -1,53 +1,48 @@
 # Round-trip behavior
 
-The data path is Carve → carve-js AST → ProseMirror document →
-`serializeToCarve` → Carve. Import does not render and reparse HTML.
+The editor runs on the Carve 0.2 Tiptap kit from carve-grammars
+(`@markup-carve/carve-grammars/tiptap`). The data path never goes through HTML:
 
-The loader uses `unsupported: 'preserve'`, so syntax without a rich Tiptap
-representation remains in source-preserving nodes rather than disappearing.
+1. Carve source → carve-js `parse` → the 0.2 tree → `carveToProseMirror` →
+   the Tiptap document.
+2. Tiptap document → `serializeToCarve` → the 0.2 tree → carve-js `write` →
+   Carve source.
 
-## Cleanly round-tripped constructs
+Every Tiptap node and mark keeps the tree fields the editor does not edit in its
+`carve` attribute (attributes, list markers, task marks, keys), and a node the
+kit has no editable form for is kept whole as an atom. The kit round-trips every
+0.2 conformance example and clause case this way.
+
+While a document is untouched, `editorToCarve` returns the loaded source byte
+for byte. After an edit, the top-level blocks the edit left alone keep their
+source; the edited blocks are written by the engine, with their original layout
+where they still stand in the same place, so fences and markers keep their
+spelling where the writer allows. A heading the author edits is written with
+`=`, the writer's only heading marker.
+
+HTML pasted or dropped from elsewhere is parsed by the Tiptap kit's node
+rules. `htmlToCarve` runs carve-js
+`importDocument(html, { from: 'html', rawHtml: false })` for a host that wants
+the engine's importer instead; the editor does not call it on paste.
+
+## Round-tripped through the editor
 
 The automated suite covers:
 
-- headings;
-- bold, italic, underline, strike, links, and inline code;
-- bullet and ordered lists;
-- blockquotes and admonitions;
-- footnote references and definitions, including authored labels;
-- frontmatter and other source-preserved constructs;
-- block attributes on partially modeled structures;
-- language spans in shorthand, longhand, and pasted HTML forms;
-- composite figures, their ordered panels, attributes, and captions.
-
-The authoring suite separately verifies that every structure-palette recipe,
-including tables, tabs, and code groups, produces an editable document. Full
-round-trip assertions are added as each underlying Carve production stabilizes.
-
-When the rich document would not write back identically, the loader attaches a
-source envelope: the authored source plus its canonical projection
-(`carveProjectedSource`). While the document is untouched, saving writes the
-authored source verbatim. After an edit, the serializer diffs the edited
-document's serialization against the projection and applies only that change to
-the authored source, so unedited regions keep their exact spelling. Where the
-edit and the authored spelling overlap, the canonical spelling wins.
-
-Loads therefore go through `setCarveDocument`, and saves through
-`editorToCarve`: Tiptap's `setContent` replaces document content without
-carrying document-node attributes, so the app keeps the envelope itself and
-re-attaches it on save. Loading a new document discards the previous envelope.
-
-Composite figures use the `carveFigureGroup` schema node. A bare `::: figure`
-opener creates a group; an opener with a title or label remains a generic
-container because it is a different Carve production.
+- headings, paragraphs, bold, italic, underline, strike, highlight,
+  superscript, subscript, inserted and deleted text, links and inline code;
+- bullet, ordered and task lists, with every task state;
+- blockquotes with captions, and thematic breaks;
+- fenced code blocks with their language, class (`{.diff}`), title and caption;
+- tables with a header row and cell alignment;
+- divs and admonitions with titles and classes, figures and figure groups with
+  captions, definition lists, line blocks, inline footnotes, spans with
+  attributes and language spans;
+- front matter, and every recipe of the structure palette.
 
 The relevant coverage lives in `tests/roundtrip.test.ts`,
-`tests/language-attribute.test.ts`, `tests/composite-figure.test.ts`,
-`tests/edit-keeps-spelling.test.ts`, and `tests/authoring.test.ts`.
-
-## Known normalization
-
-CriticMarkup containing its own closing delimiter (`+}` or `-}` inside
-`{+...+}` or `{-...-}`) cannot round-trip exactly because Carve has no escape
-for that delimiter. This is an upstream serializer limitation in
-`carve-grammars`.
+`tests/authoring-roundtrip.test.ts`, `tests/authoring-constructs.test.ts`,
+`tests/composite-figure.test.ts`, `tests/blockquote-caption.test.ts`,
+`tests/edit-keeps-spelling.test.ts`, `tests/language-attribute.test.ts`,
+`tests/code-highlight.test.ts` and `tests/toolbar.test.ts`. The kit's own suite
+in carve-grammars covers the conformance corpus.

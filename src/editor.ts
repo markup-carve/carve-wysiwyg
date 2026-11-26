@@ -1,15 +1,16 @@
 /**
  * Tiptap editor wiring for the Carve WYSIWYG app.
  *
- * The editor is initialized with carve-grammars' CarveKit (which internally
- * pulls StarterKit, Underline, Link, lists, tables, task lists, code block,
- * highlight, sub/superscript, image, plus the Carve-specific marks/nodes) and
- * exposes the serializer so the live Carve source pane can update on every
- * change.
+ * The editor runs on the Carve 0.2 Tiptap kit (carve-grammars `./tiptap`): it is
+ * loaded from the engine's tree and every change is written back through the
+ * engine's writer, so divs, titles, attributes, fence info and task states keep
+ * their structure after an edit.
  */
-import { Editor, getSchema } from '@tiptap/core';
-import type { JSONContent } from '@tiptap/core';
-import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
+import { Editor, Extension } from '@tiptap/core';
+import type { Extensions, JSONContent } from '@tiptap/core';
+import * as carve from '@markup-carve/carve';
+import { importDocument } from '@markup-carve/carve';
+import { CarveKit, carveToProseMirror, proseMirrorToTree, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 import { CarveCodeHighlight } from './code-highlight';
 
 export interface CarveEditorOptions {
@@ -18,202 +19,131 @@ export interface CarveEditorOptions {
   onUpdate?: (carve: string) => void;
 }
 
-/** The document-level attribute names CarveKit's source envelope uses. */
-const ENVELOPE_ATTRS = [
-  'carveSource', 'carveFingerprint', 'carveSourceLayout', 'carveProjectedSource',
-] as const;
+/** A Carve document prepared for the editor: its source and the kit's ProseMirror document. */
+export interface EditorDocument {
+  source: string;
+  content: JSONContent;
+}
 
-type Envelope = Record<string, unknown>;
+/** The shortcuts the toolbar names (index.html) beyond Tiptap's defaults. */
+const CarveShortcuts = Extension.create({
+  name: 'carveShortcuts',
+  addKeyboardShortcuts() {
+    const heading = (level: 1 | 2 | 3 | 4 | 5 | 6) => () => this.editor.commands.toggleHeading({ level });
+    return {
+      'Mod-1': heading(1), 'Mod-2': heading(2), 'Mod-3': heading(3),
+      'Mod-4': heading(4), 'Mod-5': heading(5), 'Mod-6': heading(6),
+      'Mod-Shift-e': () => this.editor.commands.toggleCodeBlock(),
+      'Mod-Shift-i': () => this.editor.commands.toggleMark('carveInsert'),
+      'Mod-Shift-d': () => this.editor.commands.toggleMark('carveDelete'),
+      'Mod-Shift-k': () => {
+        if (this.editor.isActive('link')) return this.editor.commands.unsetLink();
+        const href = typeof window === 'undefined' ? null : window.prompt('Link URL:');
+        return href ? this.editor.commands.setLink({ href }) : false;
+      },
+    };
+  },
+});
 
-/**
- * The source envelope of the document currently loaded into each editor.
- *
- * WHY THIS IS HELD HERE RATHER THAN ON THE DOCUMENT. `carveToProseMirror`
- * returns a doc carrying `carveSource` / `carveFingerprint` /
- * `carveSourceLayout` whenever the rich model would be lossy to write back, and
- * `serializeToCarve` writes that source verbatim for as long as the fingerprint
- * still matches the document - which is how a construct with no exact editor
- * model survives load/save instead of being normalized away.
- *
- * Tiptap's `setContent` does not carry them. It dispatches
- * `tr.replaceWith(0, doc.content.size, document)`, which replaces the doc's
- * CONTENT and leaves the doc NODE - and therefore its attributes - as it was,
- * so the envelope never reaches `editor.getJSON()`. Measured, not assumed: the
- * import produces the three attrs and the editor hands back all three as
- * `null`.
- *
- * The visible symptom was a block-attribute line above a fenced div. CarveKit's
- * `carveDiv` models the class but not the `{#id}`, so the rich document is
- * lossy, the bridge produced an envelope, the envelope was dropped, and
- *
- *   {#fig-x}
- *   ::: figure
- *   ![one](a.png)
- *   ^ (a) One
- *   :::
- *
- * came back out without its `{#fig-x}` on the first save.
- *
- * A WeakMap rather than a field on the editor so nothing is retained after an
- * editor is destroyed. Re-attaching is safe without any staleness check of its
- * own: the fingerprint is that check, and once the document is edited the
- * serializer merges the edit into the authored source instead.
- */
-const loaded = new WeakMap<Editor, { doc: JSONContent; envelope: Envelope }>();
+export const EDITOR_EXTENSIONS: Extensions = [
+  CarveKit,
+  CarveShortcuts,
+  CarveCodeHighlight,
+];
 
-/**
- * The CarveKit schema, read once, so the attribute values Tiptap materializes
- * from a node's declared defaults can be told from values the bridge set.
- */
-const schema = getSchema([CarveKit]);
-
-/** The envelope attrs of a bridge document, or null when it carries none. */
-function envelopeOf(doc: JSONContent): Envelope | null {
-  const attrs = (doc as { attrs?: Envelope }).attrs;
-  if (!attrs) return null;
-  const kept: Envelope = {};
-  for (const name of ENVELOPE_ATTRS) {
-    if (attrs[name] != null) kept[name] = attrs[name];
+/** Carve source for a kit document; a tree the writer cannot spell is written with its loss report dropped. */
+function writeDocument(json: JSONContent, source?: string): string {
+  try {
+    return serializeToCarve(json, { engine: carve, source });
+  } catch (error) {
+    if (!(error instanceof carve.CarveWriteError)) throw error;
+    return carve.writeWithDiagnostics(proseMirrorToTree(json) as never).source;
   }
-  return Object.keys(kept).length ? kept : null;
 }
 
-/** Every attribute the schema declares for a node or mark, with its default. */
-function schemaDefaults(type: unknown): Record<string, unknown> | null {
-  if (typeof type !== 'string') return null;
-  const spec = schema.nodes[type] ?? schema.marks[type];
-  if (!spec) return null;
-  const out: Record<string, unknown> = {};
-  for (const [name, attr] of Object.entries(spec.spec.attrs ?? {})) {
-    out[name] = (attr as { default?: unknown }).default;
-  }
-  return out;
+/** Carve source prepared for the editor. */
+export function carveToEditorDocument(source: string): EditorDocument {
+  return { source, content: carveToProseMirror(source, { engine: carve }) };
 }
 
-/**
- * A document reduced to what the AUTHOR wrote, with everything the schema would
- * put back stripped out.
- *
- * The point is to recognize an unedited document after a mount. Tiptap hands
- * back every attribute a node's schema declares, so `{"class":"figure"}` comes
- * back as `{"id":null,"keyValues":null,"label":null,"class":"figure",
- * "title":null}` and the mounted document never compares equal to the one that
- * was loaded.
- *
- * DROPPING NULLS IS NOT ENOUGH, and that is what this used to do. A default
- * does not have to be null: `carveCaption` declares `short` with a default of
- * `false`, so a caption came back carrying `{"short":false}` - not null, not
- * pruned, never equal. The moment carve-grammars added that attribute, every
- * document holding a caption stopped being recognized, the source envelope was
- * discarded, and a block-attribute line above a construct the rich model does
- * not carry was written back out without it. Nothing failed: the round trip
- * simply became lossy, which is the failure mode the envelope exists to
- * prevent.
- *
- * SYMMETRY IS THE OTHER HALF. This runs over BOTH documents, never over the
- * mounted one alone. The bridge does set some attributes to a value that is
- * also the schema default - `carveComment` writes `block: false` for a `%%`
- * line - so pruning only the mounted side would break exactly the documents
- * pruning is meant to keep.
- */
-function authored(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(authored);
-  if (!value || typeof value !== 'object') return value;
-  const node = value as Record<string, unknown>;
-  const defaults = schemaDefaults(node['type']);
-  const out: Record<string, unknown> = {};
-  for (const [key, inner] of Object.entries(node)) {
-    if (inner === null) continue;
-    if (key !== 'attrs' || !inner || typeof inner !== 'object') {
-      out[key] = authored(inner);
-      continue;
-    }
-    const attrs: Record<string, unknown> = {};
-    for (const [name, attrValue] of Object.entries(inner as Record<string, unknown>)) {
-      if (attrValue === null) continue;
-      if (defaults && name in defaults && stable(attrValue) === stable(defaults[name])) continue;
-      attrs[name] = authored(attrValue);
-    }
-    if (Object.keys(attrs).length) out['attrs'] = attrs;
-  }
-  return out;
+/** Canonical markup the editor writes for `source`: the engine's writer over the kit's tree. */
+export function canonicalCarve(source: string): string {
+  return writeDocument(carveToEditorDocument(source).content);
 }
 
-/** Key-order-independent string form, so two equal documents compare equal. */
-function stable(value: unknown): string {
-  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
-  return '{' + Object.keys(value as object).sort()
-    .map((k) => JSON.stringify(k) + ':' + stable((value as Record<string, unknown>)[k]))
-    .join(',') + '}';
+/** Carve source for HTML pasted or dropped from elsewhere, through the engine's HTML importer with raw HTML off. */
+export function htmlToCarve(html: string): string {
+  return importDocument(html, { from: 'html', rawHtml: false }).source;
 }
 
-/**
- * What to serialize: the document as loaded when the editor still holds it, and
- * the editor's own JSON carrying the loaded envelope once it has been edited.
- *
- * Handing the serializer the ORIGINAL document while it is unedited is what
- * makes the fingerprint match: it was taken over that exact JSON, and the mounted
- * document differs from it by the schema defaults Tiptap fills in.
- *
- * After an edit the envelope still matters. Its `carveProjectedSource` is the
- * canonical serialization of the loaded document, so the serializer can diff the
- * edited document's serialization against it and apply only that difference to
- * the authored source. Dropping the envelope instead respells every construct
- * in the document on the first keystroke.
- */
-function withEnvelope(editor: Editor, json: JSONContent): JSONContent {
-  const entry = loaded.get(editor);
-  if (!entry) return json;
-  const unedited = stable(authored(json.content ?? []))
-    === stable(authored(entry.doc.content ?? []));
-  if (unedited) return entry.doc;
-  return { ...json, attrs: { ...(json.attrs ?? {}), ...entry.envelope } };
-}
+/** The source each editor was loaded from: an unedited document writes it back byte for byte. */
+const loaded = new WeakMap<Editor, string>();
 
 export function createCarveEditor(opts: CarveEditorOptions): Editor {
-  const editor: Editor = new Editor({
+  const editor = new Editor({
     element: opts.element,
-    extensions: [CarveKit, CarveCodeHighlight],
-    content: opts.content ?? '',
+    extensions: EDITOR_EXTENSIONS,
     onUpdate: ({ editor }) => {
       opts.onUpdate?.(editorToCarve(editor));
     },
   });
+  if (opts.content) setCarveDocument(editor, carveToEditorDocument(opts.content));
   return editor;
 }
 
-/**
- * Load a bridge document into the editor, keeping its source envelope.
- *
- * Every load goes through here rather than through `setContent` directly, so
- * the previous document's envelope cannot outlive it.
- */
-export function setCarveDocument(editor: Editor, doc: JSONContent): void {
-  const envelope = envelopeOf(doc);
-  if (envelope) loaded.set(editor, { doc, envelope });
-  else loaded.delete(editor);
-  editor.commands.setContent(doc);
+/** Load a prepared document into the editor. */
+export function setCarveDocument(editor: Editor, doc: EditorDocument): void {
+  editor.commands.setCarveContent(doc.content, { emitUpdate: false });
+  loaded.set(editor, doc.source);
+}
+
+/** The front matter of the editor document as Carve source, or '' when it has none. */
+export function editorFrontmatter(editor: Editor): string {
+  const first = editor.getJSON().content?.[0];
+  if (first?.type !== 'carveFrontmatter') return '';
+  return writeDocument({ type: 'doc', content: [first] });
+}
+
+/** Replace the front matter at the head of the document with the front matter of `source`, or add it. */
+export function setEditorFrontmatter(editor: Editor, source: string): void {
+  const node = carveToEditorDocument(source).content.content?.find(child => child.type === 'carveFrontmatter');
+  const doc = editor.state.doc;
+  const first = doc.firstChild;
+  const to = first?.type.name === 'carveFrontmatter' ? first.nodeSize : 0;
+  if (node) editor.chain().insertContentAt({ from: 0, to }, node).run();
+  else if (to > 0) editor.chain().deleteRange({ from: 0, to }).run();
+}
+
+/** Insert the blocks of Carve `source` at the selection. */
+export function insertCarve(editor: Editor, source: string): boolean {
+  const content = carveToEditorDocument(source).content.content ?? [];
+  return editor.chain().focus().insertContent(content).run();
 }
 
 /** Serialize the current editor document to Carve markup. */
 export function editorToCarve(editor: Editor): string {
-  return serializeToCarve(withEnvelope(editor, editor.getJSON()));
+  return writeDocument(editor.getJSON(), loaded.get(editor));
 }
 
-/** Toggle an ordered list, using Carve's automatic marker for a new list. */
+/** A node's kit `carve` attribute with its tree `id` and classes (space-separated) replaced; empty values remove them. */
+export function withTreeAttributes(carve: Record<string, unknown> | null, id: string, classes: string): Record<string, unknown> | null {
+  const treeAttrs = { ...(carve?.attrs as Record<string, unknown> | undefined) };
+  delete treeAttrs.id;
+  delete treeAttrs.classes;
+  if (id.trim()) treeAttrs.id = id.trim();
+  if (classes.trim()) treeAttrs.classes = classes.trim().split(/\s+/);
+  const next: Record<string, unknown> = { ...carve };
+  delete next.attrs;
+  if (Object.keys(treeAttrs).length) next.attrs = treeAttrs;
+  return Object.keys(next).length ? next : null;
+}
+
+/** Toggle an ordered list. */
 export function toggleOrderedList(editor: Editor): boolean {
-  const removing = editor.isActive('orderedList');
-  const chain = editor.chain().focus().toggleOrderedList();
-  return removing
-    ? chain.run()
-    : chain.updateAttributes('orderedList', {
-        carveBareMarker: true,
-        carveDelim: '.',
-      }).run();
+  return editor.chain().focus().toggleOrderedList().run();
 }
 
-/** Re-serialize an arbitrary ProseMirror/Tiptap JSON doc. */
-export function jsonToCarve(json: unknown): string {
-  return serializeToCarve(json);
+/** Serialize an arbitrary ProseMirror/Tiptap JSON doc in the kit's schema. */
+export function jsonToCarve(json: JSONContent): string {
+  return writeDocument(json);
 }

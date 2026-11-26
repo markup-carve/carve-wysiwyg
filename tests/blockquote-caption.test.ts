@@ -21,16 +21,15 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Editor } from '@tiptap/core';
-import { CarveKit, serializeToCarve } from '@markup-carve/carve-grammars/tiptap';
 import { carveToEditorDocument } from '../src/carve-import';
-import { setCarveDocument } from '../src/editor';
+import { EDITOR_EXTENSIONS, jsonToCarve, setCarveDocument } from '../src/editor';
 
 let editor: Editor;
 
 beforeAll(() => {
   const el = document.createElement('div');
   document.body.appendChild(el);
-  editor = new Editor({ element: el, extensions: [CarveKit] });
+  editor = new Editor({ element: el, extensions: EDITOR_EXTENSIONS });
 });
 
 afterAll(() => {
@@ -41,11 +40,9 @@ afterAll(() => {
 function editElsewhereAndSerialize(source: string): string {
   setCarveDocument(editor, carveToEditorDocument(source));
   editor.commands.insertContentAt(1, 'EDITED');
-  // serializeToCarve on the raw editor JSON, deliberately NOT editorToCarve:
-  // the point is what the CONTENT tree holds, and the app's serializer would
-  // re-attach the document's source envelope, which is the very thing this
-  // test must not read.
-  return serializeToCarve(editor.getJSON());
+  // The writer over the raw editor JSON, deliberately NOT editorToCarve: the
+  // point is what the CONTENT tree holds, not the source kept beside it.
+  return jsonToCarve(editor.getJSON());
 }
 
 /**
@@ -80,6 +77,7 @@ describe("a quote's caption survives an edit", () => {
     expect(editableText()).toContain('Steve Jobs');
   });
 
+  // In 0.2 a `^` line after a blank line is a paragraph, not a caption; its text still survives the edit.
   it('keeps an attribution written one blank line below the quote', () => {
     const out = editElsewhereAndSerialize('> quote text\n\n^ Source: Someone\n');
     expect(out).toContain('EDITED');
